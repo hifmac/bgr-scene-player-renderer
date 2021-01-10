@@ -4,8 +4,7 @@
       "json/page/page.json"
     ],
     "dialog": [
-      "json/dialog/dialog.json",
-      "json/dialog/dialog_append.json"
+      "json/dialog/dialog.json"
     ],
     "character": [
       "json/character/character.min.json"

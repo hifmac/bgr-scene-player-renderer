@@ -23,7 +23,7 @@ const configLoader = {
             this.listenerList.push(listener);
 
             Promise.all([
-                Filesystem.readJsonFile('json/config.json'),
+                Filesystem.readJsonFile(SETTINGS.CONFIG_JSON),
                 makeTimeoutPromise((resolve) => { 
                     if (document.readyState === 'complete') {
                         resolve();
@@ -142,6 +142,18 @@ export const IPC = BGRSP ? window.bgrsp.IPC : null;
  */
 //@ts-ignore
 export const Filesystem = BGRSP ? window.bgrsp.Filesystem : null;
+
+/**
+ * Settings for intellisense
+ * @type {{
+ *     REMOTE: boolean,
+ *     DEBUG: boolean,
+ *     TIMEOUT: number,
+ *     CONFIG_JSON: string,
+ * }}
+ */
+//@ts-ignore
+export const SETTINGS = BGRSP ? window.bgrsp.SETTINGS.CONFIG_JSON : null;
 
 /**
  * zip 2 arguments into 1 array to iterate
