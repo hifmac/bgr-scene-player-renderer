@@ -15,7 +15,7 @@ const CACHE_QUOTA = 64 << 20;
 
 /**
  * check the data could be png file
- * @param {ArrayBuffer} data file data 
+ * @param {Uint8Array} data file data 
  * @return {boolean} whether file data is PNG file
  */
 const isPngFile = (data) => {
@@ -31,98 +31,104 @@ const isPngFile = (data) => {
 };
 
 /**
- * Data URL cache for Nina
+ * @class Data URL cache for Nina
  */
-function Cache() {
-    this.cache = {};
-};
+class Cache {
+    constructor() {
+        this.#cache = {};
+    };
 
-/**
- * @type {Object.<string, string>}
- */
-Cache.prototype.cache = null;
+    /**
+     * check whether the path is already cached
+     * @param {string} path image path 
+     * @returns {boolean} the path is cached
+     */
+    isCached(path) {
+        return this.#cache[path] !== undefined;
+    }
 
-Cache.prototype.usage = 0;
+    /**
+     * get cache for the image path
+     * @param {string} path image path 
+     * @returns {string} data url
+     */
+    get(path) {
+        return this.#cache[path];
+    }
 
-/**
- * check whether the path is already cached
- * @param {string} path image path 
- * @returns {boolean} the path is cached
- */
-Cache.prototype.isCached = function Cache_isCached(path) {
-    return this.cache[path] !== undefined;
-}
+    /**
+     * register image  data URL for the path
+     * @param {string} path image path to register 
+     * @param {string} data image data url
+     */
+    register(path, data) {
+        for (const key of Object.keys(this.#cache)) {
+            if (this.#usage <= CACHE_QUOTA) {
+                break;
+            }
 
-/**
- * get cache for the image path
- * @param {string} path image path 
- * @returns {string} data url
- */
-Cache.prototype.get = function Cache_get(path) {
-    return this.cache[path];
-}
-
-/**
- * register image  data URL for the path
- * @param {string} path image path to register 
- * @param {string} data image data url
- */
-Cache.prototype.register = function Cache_register(path, data) {
-    for (const key of Object.keys(this.cache)) {
-        if (this.usage <= CACHE_QUOTA) {
-            break;
+            this.#usage -= this.#cache[key].length;
+            delete this.#cache[key];
         }
 
-        this.usage -= this.cache[key].length;
-        delete this.cache[key];
+        this.#cache[path] = data;
+        this.#usage += data.length;
+
+        console.log(`path ${path} is cached: ${this.#usage >> 20} / ${CACHE_QUOTA >> 20} MB`);
     }
 
-    this.cache[path] = data;
-    this.usage += data.length;
+    /**
+     * @type {Object.<string, string>}
+     */
+    #cache = null;
 
-    console.log(`path ${path} is cached: ${this.usage >> 20} / ${CACHE_QUOTA >> 20} MB`);
+    #usage = 0;
 }
 
 /**
- * Nina the image loader
+ * @class Nina the image loader
  */
-function Nina() {
-    this.cache = new Cache();
-};
+class Nina {
+    constructor() {
+        this.#cache = new Cache();
+    };
 
-/** @type {Cache} */
-Nina.prototype.cache = null;
+    /**
+     * read a path as a data URL
+     * @param {string} path file path to read
+     */
+    async readAsDataURL(path) {
+        if (this.#cache.isCached(path)) {
+            return this.#cache.get(path);
+        }
 
-/**
- * read a path as a data URL
- * @param {string} path file path to read
- */
-Nina.prototype.readAsDataURL = async function Nina_readAsDataURL(path) {
-    if (this.cache.isCached(path)) {
-        return this.cache.get(path);
-    }
-
-    const data = await Filesystem.readFile(path);
-    if (isPngFile(data)) {
-        /*
-         * read PNG file and convert to Data URL to cache
-         */
-        return await new Promise((resolve) => {
-            const fileReader = new FileReader() ;
-            fileReader.addEventListener('load', () => {
-                this.cache.register(path, fileReader.result);
-                resolve(fileReader.result);
+        const data = await Filesystem.readFile(path);
+        if (isPngFile(data)) {
+            /*
+            * read PNG file and convert to Data URL to cache
+            */
+            return await new Promise((resolve) => {
+                const fileReader = new FileReader() ;
+                fileReader.addEventListener('load', () => {
+                    if (typeof fileReader.result === 'string') {
+                        this.#cache.register(path, fileReader.result);
+                        resolve(fileReader.result);
+                    }
+                });
+                fileReader.readAsDataURL( new Blob([ data ], { type: 'image/png' }) );
             });
-            fileReader.readAsDataURL( new Blob([ data ], { type: 'image/png' }) );
-        });
+        }
+        else {
+            /*
+            * load as DXT5 by using Viola if not PNG
+            */
+            this.#cache.register(path, Viola.load(data));
+            return this.#cache.get(path);
+        }
     }
-    else {
-        /*
-         * load as DXT5 by using Viola if not PNG
-         */
-        this.cache.register(path, Viola.load(data));
-        return this.cache.get(path);
-    }
-};
+
+    /** @type {Cache} */
+    #cache = null;
+}
 
 export default new Nina();

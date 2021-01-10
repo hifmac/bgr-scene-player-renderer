@@ -58,77 +58,86 @@ const TOKEN_ARRAY = 'array';
 const TOKEN_CALL = 'call';
 const TOKEN_OPERATOR = 'operator';
 
-function TokenStack() {
-    this.stack = [[]];
+/**
+ * @class multi level token stack
+ */
+class TokenStack {
+    constructor() {
+        this.#stack = [[]];
+    }
+
+    /**
+     * push element into current stack level
+     * @param {Token} token 
+     */
+    push(token) {
+        this.#stack[this.#level].push(token);
+    };
+
+    /**
+     * pop element on current stack level
+     * @returns {Token} token
+     */
+    pop() {
+        if (this.#stack[this.#level].length == 0) {
+            raiseError('No token to pop');
+        }
+        return this.#stack[this.#level].pop();
+    };
+
+    /**
+     * peek element on current stack level
+     * @param {number} offset level offset to peek
+     * @returns {Token} token
+     */
+    peek(offset=0) {
+        if (this.#level < offset) {
+            raiseError('No token to peek');
+        }
+        return last(this.#stack[this.#level - offset]);
+    };
+
+    /**
+     * elevate stack level
+     */
+    elevate() {
+        this.#stack.push([]);
+        this.#level += 1;
+    };
+
+    /**
+     * fall stack level
+     * @returns {Token[]} tokens
+     */
+    fall() {
+        if (this.#level == 0) {
+            raiseError('No stack level to fall');
+        }
+        const ret = this.#stack.pop();
+        this.#level -= 1;
+        return ret;
+    };
+
+    /**
+     * get stack level
+     * @returns {Token[]} tokens
+     */
+    get(level) {
+        if (this.#level < level) {
+            raiseError('No stack level to get');
+        }
+        return this.#stack[level];
+    };
+
+    get level() {
+        return this.#level;
+    }
+
+    /** @type {Token[][]} */
+    #stack = null;
+
+    #level = 0;    
 }
-
-/** @type {Token[][]} */
-TokenStack.prototype.stack = null;
-
-TokenStack.prototype.level = 0;
-
-/**
- * push element into current stack level
- * @param {Token} token 
- */
-TokenStack.prototype.push = function TokenStack_push(token) {
-    this.stack[this.level].push(token);
-};
-
-/**
- * pop element on current stack level
- * @returns {Token} token
- */
-TokenStack.prototype.pop = function TokenStack_pop() {
-    if (this.stack[this.level].length == 0) {
-        raiseError('No token to pop');
-    }
-    return this.stack[this.level].pop();
-};
-
-/**
- * peek element on current stack level
- * @param {number} offset level offset to peek
- * @returns {Token} token
- */
-TokenStack.prototype.peek = function TokenStack_peek(offset=0) {
-    if (this.level < offset) {
-        raiseError('No token to peek');
-    }
-    return last(this.stack[this.level - offset]);
-};
-
-/**
- * elevate stack level
- */
-TokenStack.prototype.elevate = function TokenStack_elevate() {
-    this.stack.push([]);
-    this.level += 1;
-};
-
-/**
- * fall stack level
- * @returns {Token[]} tokens
- */
-TokenStack.prototype.fall = function TokenStack_fall() {
-    if (this.level == 0) {
-        raiseError('No stack level to fall');
-    }
-    const ret = this.stack.pop();
-    this.level -= 1;
-    return ret;
-};
-
-/**
- * get stack level
- * @returns {Token[]} tokens
- */
-TokenStack.prototype.get = function TokenStack_get(level) {
-    if (this.level < level) {
-        raiseError('No stack level to get');
-    }
-    return this.stack[level];
-};
 
 /**
  * make Token from string

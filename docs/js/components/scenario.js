@@ -29,136 +29,151 @@ const template = {
     }
 };
 
-export default function Scenario(id, initPage, config) {
-    this.history = [ initPage ];
-    this.adelite = new Adelite(id, template);
-    this.config = config;
-    this.listeners = [];
-};
-
-/** @type {Object} */
-Scenario.prototype.rows = [];
-
-/** @type {string[]} */
-Scenario.prototype.history = null;
-
-/** @type {Adelite} */
-Scenario.prototype.adelite = null;
-
-/** @type {Object} */
-Scenario.prototype.config = {};
-
-/** @type {(function(string): void)[]} */
-Scenario.prototype.listeners = null;
-
 /**
- * show this component
+ * @class Scenario page view
  */
-Scenario.prototype.show = function Scenario_show() {
-    this.adelite.show(this);
-    IPC.requestPage(last(this.history))
-        .then((page) => this.drawPage(page))
-        .catch(printStack);
-}
+export default class Scenario {
+    /**
+     * @constructor
+     * @param {string} id 
+     * @param {string} initPage initial page to show 
+     * @param {Object} config 
+     */
+    constructor(id, initPage, config) {
+        this.#history = [ initPage ];
+        this.#adelite = new Adelite(id, template);
+        this.#config = config;
+        this.#listeners = [];
+    };
 
-Scenario.prototype.destroy = function Scenario_destroy() {
-    this.adelite.destroy();
-};
-
-/**
-* on row clicked
-* @param {{
-*     icon: string,
-*     title: string,
-*     page: Object
-* }} data 
-*/
-Scenario.prototype.onRowClicked = function Scenario_onRowClicked(data) {
-    if (data.page) {
-        if ('subpages' in data.page) {
-            this.history.push(data.page.id);
-            IPC.requestPage(data.page.id)
-                .then((page) => this.drawPage(page))
-                .catch(printStack);            
-        }
-        else if ('view' in data.page) {
-            this.onViewChanged(data.page.view);
-        }
-        else {
-            console.error('Cannot handle: ', data.page);
-        }
-    }
-    else if ('back' in data) {
-        this.back();
-    }
-}
-
-Scenario.prototype.drawPage = function Scenario_drawPage(page) {
-    this.rows = [];
-    this.adelite.update();
-
-    const promises = [];
-    for (let subpageId of page.subpages) {
-        promises.push(IPC.requestPage(subpageId));
+    /**
+     * show this component
+     */
+    show() {
+        this.#adelite.show(this);
+        IPC.requestPage(last(this.#history))
+            .then((page) => this.drawPage(page))
+            .catch(printStack);
     }
 
-    Promise.all(promises)
-    .then((subpages) => {
-        this.rows = [
-            {
-                title: '戻る',
-                back: true,
+    destroy() {
+        this.#adelite.destroy();
+    };
+
+    /**
+    * on row clicked
+    * @param {{
+    *     icon: string,
+    *     title: string,
+    *     page: Object
+    * }} data 
+    */
+    onRowClicked(data) {
+        if (data.page) {
+            if ('subpages' in data.page) {
+                this.#history.push(data.page.id);
+                IPC.requestPage(data.page.id)
+                    .then((page) => this.drawPage(page))
+                    .catch(printStack);            
             }
-        ];
-
-        for (const subpage of subpages) { 
-            const row = {
-                hasIcon: 'icon' in subpage,
-                iconSrc: null,
-                title: subpage.title,
-                page: subpage
-            };
-            this.rows.push(row);
-
-            if (row.hasIcon) {
-                Nina.readAsDataURL(this.config.data.texture.icon + '/' + subpage.icon + '.png')
-                    .then((url) => {
-                        row.iconSrc = url;
-                        this.adelite.update();
-                    })
-                    .catch(printStack);
+            else if ('view' in data.page) {
+                this.onViewChanged(data.page.view);
+            }
+            else {
+                console.error('Cannot handle: ', data.page);
             }
         }
-
-        this.adelite.update();
-    })
-    .catch(printStack);
-};
-
-/**
- * add view change listener
- * @param {function(string): void} listener 
- */
-Scenario.prototype.addViewChangeListener = function Scenario_addViewChangeListener(listener) {
-    this.listeners.push(listener);
-};
-
-/**
- * invoke listeners on view changed
- * @param {string} view view name to be rendered 
- */
-Scenario.prototype.onViewChanged = function Scenario_onViewChanged(view) {
-    for (let listener of this.listeners) {
-        listener(view);
-    }
-};
-
-Scenario.prototype.back = function Scenario_back() {
-    if (2 <= this.history.length) {
-        this.history.pop();
+        else if ('back' in data) {
+            this.back();
+        }
     }
 
-    IPC.requestPage(last(this.history))
-        .then((page) => this.drawPage(page))
+    drawPage(page) {
+        this.#rows = [];
+        this.#adelite.update();
+
+        const promises = [];
+        for (let subpageId of page.subpages) {
+            promises.push(IPC.requestPage(subpageId));
+        }
+
+        Promise.all(promises)
+        .then((subpages) => {
+            this.#rows = [
+                {
+                    title: '戻る',
+                    back: true,
+                }
+            ];
+
+            for (const subpage of subpages) { 
+                const row = {
+                    hasIcon: 'icon' in subpage,
+                    iconSrc: null,
+                    title: subpage.title,
+                    page: subpage
+                };
+                this.#rows.push(row);
+
+                if (row.hasIcon) {
+                    Nina.readAsDataURL(this.#config.data.texture.icon + '/' + subpage.icon + '.png')
+                        .then((url) => {
+                            row.iconSrc = url;
+                            this.#adelite.update();
+                        })
+                        .catch(printStack);
+                }
+            }
+
+            this.#adelite.update();
+        })
         .catch(printStack);
+    };
+
+    /**
+     * add view change listener
+     * @param {function(string): void} listener 
+     */
+    addViewChangeListener(listener) {
+        this.#listeners.push(listener);
+    };
+
+    /**
+     * invoke listeners on view changed
+     * @param {string} view view name to be rendered 
+     */
+    onViewChanged(view) {
+        for (let listener of this.#listeners) {
+            listener(view);
+        }
+    };
+
+    back() {
+        if (2 <= this.#history.length) {
+            this.#history.pop();
+        }
+
+        IPC.requestPage(last(this.#history))
+            .then((page) => this.drawPage(page))
+            .catch(printStack);
+    }
+
+    get rows() {
+        return this.#rows;
+    }
+
+    /** @type {Object} */
+    #rows = [];
+
+    /** @type {string[]} */
+    #history = null;
+
+    /** @type {Adelite} */
+    #adelite = null;
+
+    /** @type {Object} */
+    #config = {};
+
+    /** @type {(function(string): void)[]} */
+    #listeners = null;
 }

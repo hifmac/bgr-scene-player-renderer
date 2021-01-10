@@ -18,22 +18,56 @@ const template = {
     }
 };
 
-export default function Background(id, config) {
-    this.adelite = new Adelite(id, template);
-    this.config = config;
-}
+/**
+ * Main screen background image view
+ */
+export default class Background {
+    /**
+     * @constructor
+     * @param {string} id 
+     * @param {Object} config 
+     */
+    constructor(id, config) {
+        this.#adelite = new Adelite(id, template);
+        this.#config = config;
+    }
 
-Background.prototype.src = null;
+    /**
+     * shou this
+     */
+    show() {
+        this.#adelite.show(this);
+    }
 
-Background.prototype.show = function Background_show() {
-    this.adelite.show(this);
-}
+    /**
+     * 
+     * @param {string} file 
+     */
+    setDialog(file) {
+        Nina.readAsDataURL(this.#config.data.texture.dialog + file)
+            .then((url) => {
+                this.#src = url;
+                this.#adelite.update();
+            })
+            .catch(printStack);
+    }
 
-Background.prototype.setDialog = function Background_setDialog(file) {
-    Nina.readAsDataURL(this.config.data.texture.dialog + file)
-        .then((url) => {
-            this.src = url;
-            this.adelite.update();
-        })
-        .catch(printStack);
+    get src() {
+        return this.#src;
+    }
+
+    /** @type {Adelite} */
+    #adelite = null;
+
+    /**
+     * BGRSP config
+     * @type {Object}
+     */
+    #config = null;
+
+    /**
+     * image source
+     * @type {string}
+     */
+    #src = null;    
 }

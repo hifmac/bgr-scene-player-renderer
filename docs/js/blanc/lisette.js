@@ -8,15 +8,20 @@
 'use strict'
 
 const configLoader = {
-    loaded: false,
     config: null,
     listenerList: [],
 
     /**
-     * load config
+     * invoke listener or push listener into wait queue
+     * @param {function(Object): void} listener an onload event listener
      */
-    initialize() {
-        if (Filesystem) {
+    invoke(listener) {
+        if (this.config) {
+            listener(this.config);
+        }
+        else if (Filesystem) {
+            this.listenerList.push(listener);
+
             Promise.all([
                 Filesystem.readJsonFile('json/config.json'),
                 makeTimeoutPromise((resolve) => { 
@@ -38,19 +43,6 @@ const configLoader = {
         }
         else {
             console.error('bgrsp is not exported...');
-        }
-    },
-        
-    /**
-     * invoke listener or push listener into wait queue
-     * @param {function(Object): void} listener an onload event listener
-     */
-    invoke(listener) {
-        if (this.config) {
-            listener(this.config);
-        }
-        else {
-            this.listenerList.push(listener);
         }
     }
 };
@@ -116,6 +108,11 @@ const promiseTimeout = {
 };
 
 /**
+ * current environment is in BGRSP
+ */
+export const BGRSP = 'bgrsp' in window;
+
+/**
  * IPC for intellisense
  * @type {{
  *    requestPage: (string) => Promise<Object>,
@@ -129,10 +126,9 @@ const promiseTimeout = {
  *    searchBGM: (string) => Promise<Object[]>,
  *    searchDialog: (string) => Promise<Object[]>
  * }}
- *
  */
 //@ts-ignore
-export const IPC =  window.bgrsp.IPC;
+export const IPC = BGRSP ? window.bgrsp.IPC : null;
 
 /**
  * Filesystem for intellisense
@@ -145,7 +141,7 @@ export const IPC =  window.bgrsp.IPC;
  * }}
  */
 //@ts-ignore
-export const Filesystem = window.bgrsp.Filesystem;
+export const Filesystem = BGRSP ? window.bgrsp.Filesystem : null;
 
 /**
  * zip 2 arguments into 1 array to iterate
@@ -192,10 +188,10 @@ export function onLoad(listener) {
 /**
  * get URL parameters from a specific URL
  * use current locatoin href if no URL is specified
- * @param {string} url an url to parse url parameters
+ * @param {(string|null)} url an url to parse url parameters
  * @returns {Object} URL parameters in the URL
  */
-export function getURLParameter(url) {
+export function getURLParameter(url=null) {
     if (url == null) {
         url = window.location.href;
     }
@@ -301,5 +297,3 @@ export function printStack(exc) {
 export const MOUSE_BUTTON_PRIMARY = 0;
 export const MOUSE_BUTTON_WHEEL = 1;
 export const MOUSE_BUTTON_SECONDARY = 2;
-
-configLoader.initialize();
