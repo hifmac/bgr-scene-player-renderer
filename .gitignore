@@ -1,6 +1,6 @@
 script
-src/js/dev
-src/json/layout
+docs/js/dev
+docs/json/layout
 
 # local env files
 .env.local
