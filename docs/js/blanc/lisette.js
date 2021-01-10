@@ -22,6 +22,7 @@ const configLoader = {
         else if (Filesystem) {
             this.listenerList.push(listener);
 
+            console.log(SETTINGS.CONFIG_JSON);
             Promise.all([
                 Filesystem.readJsonFile(SETTINGS.CONFIG_JSON),
                 makeTimeoutPromise((resolve) => { 
@@ -153,7 +154,7 @@ export const Filesystem = BGRSP ? window.bgrsp.Filesystem : null;
  * }}
  */
 //@ts-ignore
-export const SETTINGS = BGRSP ? window.bgrsp.SETTINGS.CONFIG_JSON : null;
+export const SETTINGS = BGRSP ? window.bgrsp.SETTINGS : null;
 
 /**
  * zip 2 arguments into 1 array to iterate
