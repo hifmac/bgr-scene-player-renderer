@@ -33,7 +33,7 @@ export default class Background {
     }
 
     /**
-     * shou this
+     * show this
      */
     show() {
         this.#adelite.show(this);
