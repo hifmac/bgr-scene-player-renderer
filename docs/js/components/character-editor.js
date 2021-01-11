@@ -316,8 +316,7 @@ export default class CharacterEditor {
     }
 
     show() {
-        this.#adelite.show(this);
-        requestAnimationFrame(() => {
+        this.#adelite.show(this).then(() => {
             this.#renderer = new CharacterTestRenderer(this.#adelite.getElementById('character-texture-canvas'), this.#config);
             this.onCharacterChanged(this.#characterIndex);
         });
@@ -599,11 +598,13 @@ export default class CharacterEditor {
         if (this.#renderer) {
             const fr = new FileReader();
             fr.addEventListener('load', (e) => {
-                const img = new Image;
                 if (typeof e.target.result === 'string') {
+                    const img = new Image;
                     img.src = e.target.result;
-                    this.#renderer.setExample(0, 0, img);
-                    this.#renderer.update();
+                    img.addEventListener('load', () => {
+                        this.#renderer.setExample(0, 0, img);
+                        this.#renderer.update();    
+                    });
                 }
                 else {
                     console.error(`Invalid result type: ${typeof e.target.result}`);

@@ -96,6 +96,7 @@ class Nina {
     /**
      * read a path as a data URL
      * @param {string} path file path to read
+     * @returns {Promise<string>}
      */
     async readAsDataURL(path) {
         if (this.#cache.isCached(path)) {
@@ -107,7 +108,7 @@ class Nina {
             /*
             * read PNG file and convert to Data URL to cache
             */
-            return await new Promise((resolve) => {
+            return new Promise((resolve) => {
                 const fileReader = new FileReader() ;
                 fileReader.addEventListener('load', () => {
                     if (typeof fileReader.result === 'string') {
@@ -125,6 +126,21 @@ class Nina {
             this.#cache.register(path, Viola.load(data));
             return this.#cache.get(path);
         }
+    }
+
+    /**
+     * read a path as a data URL
+     * @param {string} path file path to read
+     * @returns {Promise<HTMLImageElement>}
+     */
+    async readAsImage(path) {
+        const img = new Image();
+        img.src = await this.readAsDataURL(path);
+        return new Promise((resolve) => {
+            img.addEventListener('load', () => {
+                resolve(img);
+            });
+        });
     }
 
     /** @type {Cache} */
