@@ -31,32 +31,17 @@ export class Component {
     setContext(context) {
         this.#context = [ ...context, this, Component.BUILTIN_OBJECT ];
     }
-    
+
     /**
      * update this component
-     * this method should be replaced in Chescarna.View.build
      */
     update() {
-    }
-    
-    /**
-     * update component tree recursively
-     */
-    updateRecursive() {
-        this.update();
+        this.#updater();
         for (let child of this.children) {
-            child.updateRecursive();
+            child.update();
         }
     }
-    
-    /**
-     * set component updater
-     * @param {function(): void} updater 
-     */
-    setUpdater(updater) {
-        this.update = updater;
-    }
-    
+
     /**
      * get element attribute
      * @param {string} name
@@ -105,6 +90,13 @@ export class Component {
      */
     clearChild() {
         raiseError('No clearChild implementation');
+    }
+
+    /**
+     * @param {() => void} value
+     */
+    set updater(value) {
+        this.#updater = value;
     }
 
     get children() {
@@ -198,6 +190,9 @@ export class Component {
             return new ctor(...args);
         }
     };
+
+    /** @type {() => void} */
+    #updater = () => {};
 
     /** @type {Object[]} */
     #context = [];
@@ -336,7 +331,7 @@ export class View {
         /** @type {Dependency[]} */
         let dependencies = [];
 
-        component.setUpdater(() => {
+        component.updater = () => {
             const newDependencies = Array.from(this.#children, (child) => child.build(contextStack));
 
             let updated = false;
@@ -380,7 +375,7 @@ export class View {
             for (let key in this.#bind) {
                 component.setAttribute(key, this.#bind[key](component.context));
             }
-        });
+        };
 
         return component;
     }
@@ -415,32 +410,34 @@ export class View {
     #condition = () => true;
 }
 
-/** @type {Set<Component>} */
+/** @type {Set<() => void>} */
 const PENDING_COMPONENTS = new Set();
 
 /**
  * update all components recursively
- * @param {Component[]} components
+ * @param {Component} component
  */
-export function update(components) {
-    if (components) {
+export function update(component) {
+    if (component) {
         if (PENDING_COMPONENTS.size == 0) {
-            requestAnimationFrame(function() {
-                PENDING_COMPONENTS.forEach((comp) => comp.updateRecursive());
+            requestAnimationFrame(() => {
+                PENDING_COMPONENTS.forEach((p) => p());
                 PENDING_COMPONENTS.clear();
             });
         }
     
-        for (let component of components) {
-            PENDING_COMPONENTS.add(component);
-        }
+        return new Promise((resolve) => {
+            PENDING_COMPONENTS.add(() => {
+                component.update();
+                resolve();
+            });
+        });
     }
+    return null;
 }
 
-export function cancelUpdate(components) {
-    if (components) {
-        for (let component of components) {
-            PENDING_COMPONENTS.delete(component);
-        }
+export function cancelUpdate(component) {
+    if (component) {
+        PENDING_COMPONENTS.delete(component);
     }
 }

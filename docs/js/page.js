@@ -14,13 +14,14 @@ import {
 } from './blanc/lisette.js';
 
 /**
- * 
+ * draw BGRSP page
  * @param {typeof import('./components/background.js').default} Background 
  * @param {typeof import('./components/scenario.js').default} Scenario 
  * @param {typeof import('./components/check.js').default} Check 
  * @param {typeof import('./components/search.js').default} Search 
  * @param {typeof import('./components/texture-preview.js').default} TexturePreview 
  * @param {typeof import('./components/character-editor.js').default} CharacterEditor 
+ * @param {Object} config
  */
 function drawPage(
     Background,
@@ -28,73 +29,72 @@ function drawPage(
     Check,
     Search,
     TexturePreview,
-    CharacterEditor) {
+    CharacterEditor,
+    config) {
 
-    onLoad((config) => {
-        const background = new Background('#background', config);
-        background.show();
-    
-        let currentView = null;
-        const scenario = new Scenario('#app', getURLParameter().v, config);
-        const check = new Check('#app', config);
-        const search = new Search('#app', config);
-        const texturePreview = new TexturePreview('#app', config);
-        const characterEditor = new CharacterEditor('#app', config);
-    
-        scenario.addViewChangeListener(function(view) {
-            if (currentView) {
-                currentView.destroy();
-                currentView = null;
-            }
-    
-            switch (view) {
-            case 'Check':
-                background.setDialog('/dialog/dialog2');
-                currentView = check;
-                document.title = 'ファイルチェック';
-                break;
-            case 'Search':
-                background.setDialog('/dialog/dialog3');
-                currentView = search;
-                document.title = '検索';
-                break;
-            case 'Texture':
-                background.setDialog('/dialog/dialog4');
-                currentView = texturePreview;
-                document.title = 'テクスチャプレビュー';
-                break;
-            case 'Character':
-                background.setDialog('/dialog/dialog5');
-                currentView = characterEditor;
-                document.title = 'キャラクタエディタ';
-                break;
-            }
-    
-            if (currentView) {
-                currentView.show();
-            }
-        });
-    
-        function backPage(e) {
-            if (currentView === scenario) {
-                scenario.back();
-            }
-            else {
-                background.setDialog('/dialog/dialog1');
-                scenario.show();
-                currentView = scenario;
-                document.title = 'シナリオページ';
-            }
+    const background = new Background('#background', config);
+    background.show();
+
+    let currentView = null;
+    const scenario = new Scenario('#app', getURLParameter().v, config);
+    const check = new Check('#app', config);
+    const search = new Search('#app', config);
+    const texturePreview = new TexturePreview('#app', config);
+    const characterEditor = new CharacterEditor('#app', config);
+
+    scenario.addViewChangeListener(function(view) {
+        if (currentView) {
+            currentView.destroy();
+            currentView = null;
         }
-    
-        window.addEventListener('keydown', function(e) {
-            if (e.key == 'Escape') {
-                backPage();
-            }
-        });
-    
-        backPage();
+
+        switch (view) {
+        case 'Check':
+            background.setDialog('/dialog/dialog2');
+            currentView = check;
+            document.title = 'ファイルチェック';
+            break;
+        case 'Search':
+            background.setDialog('/dialog/dialog3');
+            currentView = search;
+            document.title = '検索';
+            break;
+        case 'Texture':
+            background.setDialog('/dialog/dialog4');
+            currentView = texturePreview;
+            document.title = 'テクスチャプレビュー';
+            break;
+        case 'Character':
+            background.setDialog('/dialog/dialog5');
+            currentView = characterEditor;
+            document.title = 'キャラクタエディタ';
+            break;
+        }
+
+        if (currentView) {
+            currentView.show();
+        }
     });
+
+    function backPage(e) {
+        if (currentView === scenario) {
+            scenario.back();
+        }
+        else {
+            background.setDialog('/dialog/dialog1');
+            scenario.show();
+            currentView = scenario;
+            document.title = 'シナリオページ';
+        }
+    }
+
+    window.addEventListener('keydown', function(e) {
+        if (e.key == 'Escape') {
+            backPage();
+        }
+    });
+
+    backPage();
 }
 
 /**
@@ -153,14 +153,16 @@ if (BGRSP) {
         import('./components/check.js'),
         import('./components/search.js'),
         import('./components/texture-preview.js'),
-        import('./components/character-editor.js')
+        import('./components/character-editor.js'),
+        new Promise((resolve) => onLoad((config) => resolve(config)))
     ]).then((modules) => drawPage(
         modules[0].default,
         modules[1].default,
         modules[2].default,
         modules[3].default,
         modules[4].default,
-        modules[5].default));
+        modules[5].default,
+        modules[6]));
 }
 else {
     import('./sandica/adelite.js').then((module) => drawTestPage(module.default));

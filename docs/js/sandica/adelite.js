@@ -24,10 +24,10 @@ class Component extends Chescarna.Component {
     constructor(element, elementDict) {
         super();
         this.#children = [];
-        this.element = element;
-        this.elementDict = elementDict;
-        if (this.element.id) {
-            elementDict[this.element.id] = this.element;
+        this.#element = element;
+        this.#elementDict = elementDict;
+        if (this.#element.id) {
+            elementDict[this.#element.id] = this.#element;
         }
     }
     
@@ -43,13 +43,13 @@ class Component extends Chescarna.Component {
             || name === 'checked'
             || name === 'width'
             || name === 'height') {
-            return this.element[name];
+            return this.#element[name];
         }
         else if (name === 'class') {
-            return this.element.classList;
+            return this.#element.classList;
         }
         else {
-            return this.element.getAttribute(name);
+            return this.#element.getAttribute(name);
         }
     }
     
@@ -65,29 +65,29 @@ class Component extends Chescarna.Component {
             || name === 'checked'
             || name === 'width'
             || name === 'height') {
-            if (this.element[name] !== value) {
-                this.element[name] = value;
+            if (this.#element[name] !== value) {
+                this.#element[name] = value;
             }
         }
         else if (name === 'class') {
             for (let cls of value.split(' ')) {
-                this.element.classList.add(cls);
+                this.#element.classList.add(cls);
             }
         }
         else {
-            if (this.element.getAttribute(name) !== value) {
-                this.element.setAttribute(name, value);
+            if (this.#element.getAttribute(name) !== value) {
+                this.#element.setAttribute(name, value);
             }
         }
     }
-    
+
     /**
      * add event listener
      * @param {string} name 
      * @param {function(Event): void} listener 
      */
     addEventListener(name, listener) {
-        this.element.addEventListener(name, listener);
+        this.#element.addEventListener(name, listener);
     }
     
     /**
@@ -95,7 +95,7 @@ class Component extends Chescarna.Component {
      * @param {Component} component 
      */
     appendChild(component) {
-        this.element.appendChild(component.element);
+        this.#element.appendChild(component.#element);
         this.#children.push(component);
     }
     
@@ -104,11 +104,11 @@ class Component extends Chescarna.Component {
      * @param {Component} component 
      */
     removeChild(component) {
-        this.element.removeChild(component.element);
+        this.#element.removeChild(component.#element);
         this.#children = this.#children.filter((x) => x != component);
-        if (component.element.id && component.element.id in this.elementDict) {
-            if (this.elementDict[component.element.id] === component.element) {
-                delete this.elementDict[component.element.id];
+        if (component.#element.id && component.#element.id in this.#elementDict) {
+            if (this.#elementDict[component.#element.id] === component.#element) {
+                delete this.#elementDict[component.#element.id];
             }
         }
     }
@@ -118,14 +118,18 @@ class Component extends Chescarna.Component {
      */
     clearChild() {
         for (const child of this.#children) {
-            this.element.removeChild(child.element);
-            if (child.element.id && child.element.id in this.elementDict) {
-                if (this.elementDict[child.element.id] === child.element) {
-                    delete this.elementDict[child.element.id];
+            this.#element.removeChild(child.element);
+            if (child.element.id && child.element.id in this.#elementDict) {
+                if (this.#elementDict[child.element.id] === child.element) {
+                    delete this.#elementDict[child.element.id];
                 }
             }
         }
         this.#children = [];
+    }
+
+    get element() {
+        return this.#element;
     }
 
     get children() {
@@ -133,7 +137,10 @@ class Component extends Chescarna.Component {
     }
 
     /** @type {HTMLElement} */
-    element = null;
+    #element = null;
+
+    /** @type {Object.<string, HTMLElement>} */
+    #elementDict = null;
 
     /** @type {Component[]} */
     #children = null;    
@@ -162,23 +169,23 @@ export default class Adelite {
         if (dependency.children.length != 1) {
             raiseError('Adelite root component must be 1');
         }
-        this.#components = Array.from(dependency.children, (d) => d.create((tagName) => this.createComponent(tagName)));
-        Chescarna.update(this.#components);
+        this.#component = dependency.children[0].create((tagName) => this.createComponent(tagName));
+        return Chescarna.update(this.#component);
     }
 
     /**
      * update this view
      */
     update() {
-        Chescarna.update(this.#components);
+        return Chescarna.update(this.#component);
     }
 
     /**
      * destroy this view
      */
     destroy() {
-        Chescarna.cancelUpdate(this.#components);
-        this.#components = null;
+        Chescarna.cancelUpdate(this.#component);
+        this.#component = null;
         this.#elementDict = null;
     }
 
@@ -230,8 +237,8 @@ export default class Adelite {
     /** @type {Chescarna.View} */
     #view = null;
 
-    /** @type {Chescarna.Component[]} */
-    #components = null;
+    /** @type {Chescarna.Component} */
+    #component = null;
 
     /** @type {Object} */
     #elementDict = null;    
