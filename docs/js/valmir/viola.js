@@ -234,11 +234,12 @@ class Viola {
         /*
         * iterate for each block(16 bytes) 
         */
-        for (let i = data.length, blockNumber = i / DXT5_BLOCK_SIZE; i; --blockNumber) {
+        for (let i = data.length, blockNumber = i / DXT5_BLOCK_SIZE; i;) {
             /*
             * read alpha and color array
             */
             i -= DXT5_BLOCK_SIZE;
+            --blockNumber;
             const alpha = readAlphas(data, i);
             const color = readColors(data, i);
 
