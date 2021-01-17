@@ -48,19 +48,63 @@ export default class TexturePreview {
     }
 
     show() {
-        this.#data = {
+        const data = {
             selectedIndex: 0,
             textures: [],
             src: null,
-            onTextureChanged: (selectexIndex) => this.onTextureChanged(selectexIndex),
-            onWheelEvent: (event) => this.onWheelEvent(event),
-            onDoubleClick: () => this.onDoubleClick,
+
+            /**
+             * 
+             * @param {number} selectedIndex 
+             */
+            onTextureChanged: (selectedIndex) => {
+                data.selectedIndex = selectedIndex;
+
+                Nina.readAsDataURL(this.#path + data.textures[data.selectedIndex])
+                    .then((url) => {
+                        data.src = url;
+                        this.#adelite.update();
+                    })
+                    .catch(printStack);
+            },
+
+            /**
+             * wheel event
+             * @param {WheelEvent} e 
+             */
+            onWheelEvent: (e) => {
+                if (e.deltaY < 0 && 0 < data.selectedIndex) {
+                    data.onTextureChanged(data.selectedIndex - 1);
+                    e.preventDefault();
+                    e.returnValue = false;
+                }
+                else if (0 < e.deltaY && data.selectedIndex + 1 < data.textures.length) {
+                    data.onTextureChanged(data.selectedIndex + 1);
+                    e.preventDefault();
+                    e.returnValue = false;
+                }
+            },
+
+            /**
+             * image double clicked
+             */
+            onDoubleClick: () => {
+                if (data.src) {
+                    const downLoadLink = document.createElement('a');
+                    downLoadLink.download = data.textures[data.selectedIndex] + '.png';
+                    downLoadLink.href = data.src;
+                    downLoadLink.dataset.downloadurl = ["image/png", downLoadLink.download, downLoadLink.href].join(":");
+                    downLoadLink.click();
+                }
+            }
         };
+
+        this.#data = data;
         this.#adelite.show(this.#data).then(() => {
             if (this.#data.textures.length === 0) {
                 Filesystem.readDirectory(this.#path).then((files) => {
                     this.#data.textures = files;
-                    this.onTextureChanged(0);        
+                    this.#data.onTextureChanged(0);        
                 }).catch(printStack);
             }
         }).catch(printStack);
@@ -68,51 +112,6 @@ export default class TexturePreview {
 
     destroy() {
         this.#adelite.destroy();
-    };
-
-    /**
-     * 
-     * @param {number} selectedIndex 
-     */
-    onTextureChanged(selectedIndex) {
-        this.#data.selectedIndex = selectedIndex;
-
-        Nina.readAsDataURL(this.#path + this.#data.textures[this.#data.selectedIndex])
-            .then((url) => {
-                this.#data.src = url;
-                this.#adelite.update();
-            })
-            .catch(printStack);
-    };
-
-    /**
-     * wheel event
-     * @param {WheelEvent} e 
-     */
-    onWheelEvent(e) {
-        if (e.deltaY < 0 && 0 < this.#data.selectedIndex) {
-            this.onTextureChanged(this.#data.selectedIndex - 1);
-            e.preventDefault();
-            e.returnValue = false;
-        }
-        else if (0 < e.deltaY && this.#data.selectedIndex + 1 < this.#data.textures.length) {
-            this.onTextureChanged(this.#data.selectedIndex + 1);
-            e.preventDefault();
-            e.returnValue = false;
-        }
-    };
-
-    /**
-     * image double clicked
-     */
-    onDoubleClick() {
-        if (this.#data.src) {
-            const downLoadLink = document.createElement('a');
-            downLoadLink.download = this.#data.textures[this.#data.selectedIndex] + '.png';
-            downLoadLink.href = this.#data.src;
-            downLoadLink.dataset.downloadurl = ["image/png", downLoadLink.download, downLoadLink.href].join(":");
-            downLoadLink.click();
-        }
     };
 
     /** @type {Object} */
