@@ -1,7 +1,8 @@
 {
   "json":{
     "page":[
-      "json/page/page.json"
+      "json/page/page.json",
+      "json/page/page-append.json"      
     ],
     "dialog": [
       "json/dialog/dialog.json"

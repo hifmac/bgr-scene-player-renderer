@@ -14,7 +14,7 @@ import {
     MOUSE_BUTTON_PRIMARY,
     MOUSE_BUTTON_SECONDARY
 } from '../blanc/lisette.js';
-import Nina from '../valmir/nina.js';
+import * as Nina from '../valmir/nina.js';
 import Adelite from '../sandica/adelite.js';
 
 /**{
@@ -458,109 +458,116 @@ export default class CharacterEditor {
         }, 60000);
     }
 
+    /**
+     * mouse down event
+     * @param {MouseEvent} e 
+     */
     onMouseDown(e) {
-        if (e.button == MOUSE_BUTTON_PRIMARY) {
-            const currentCharacter = this.#characters[this.#characterIndex];
-            const currentFace = this.#faces[this.#faceIndex];
-
-            const tmp = new HoldObject(this.#renderer);
-            const body_rect = currentCharacter.body_rect;
-            const face_rect = currentCharacter.face_rect[currentFace];
-            const example_rect = this.#renderer.getExample();
-
-            if (tmp.start(e, { x: face_rect[0], y: face_rect[1], w: face_rect[4], h: face_rect[5] })) {
-                const x = face_rect[0];
-                const y = face_rect[1];
-                tmp.setEventListener({
-                    mouseMove: (dx, dy) => {
-                        face_rect[0] = x + dx;
-                        face_rect[1] = y + dy;
-                        this.#renderer.setFace(face_rect);
-                        this.updateFace();
-                    },
-                    arrowKey: (dx, dy) => {
-                        face_rect[0] += dx;
-                        face_rect[1] += dy;
-                        this.#renderer.setFace(face_rect);
-                        this.updateFace();
-                    },
-                });
-            }
-            else if (tmp.start(e, { x: face_rect[2], y: face_rect[3], w: face_rect[4], h: face_rect[5] })) {
-                const x = face_rect[2];
-                const y = face_rect[3];
-                tmp.setEventListener({
-                    mouseMove: (dx, dy) => {
-                        face_rect[2] = x + dx;
-                        face_rect[3] = y + dy;
-                        this.#renderer.setFace(face_rect);
-                        this.updateFace();
-                    },
-                    arrowKey: (dx, dy) => {
-                        face_rect[2] += dx;
-                        face_rect[3] += dy;
-                        this.#renderer.setFace(face_rect);
-                        this.updateFace();
-                    },
-                });
-            }
-            else if (example_rect && tmp.start(e, example_rect)) {
-                tmp.setEventListener({
-                    mouseMove: (dx, dy) => {
-                        this.#renderer.setExample(example_rect.x + dx, example_rect.y + dy);
-                        this.updateBody();
-                    },
-                    arrowKey: (dx, dy) => {
-                        const rect = this.#renderer.getExample();
-                        this.#renderer.setExample(rect.x + dx, rect.y + dy);
-                        this.updateBody();
-                    },
-                });
-            }
-            else if (tmp.start(e, { x: body_rect[0], y: body_rect[1], w: body_rect[2], h: body_rect[3] })) {
-                const x = body_rect[0];
-                const y = body_rect[1];
-                tmp.setEventListener({
-                    mouseMove: (dx, dy) => {
-                        body_rect[0] = x + dx;
-                        body_rect[1] = y + dy;
-                        this.updateBody();
-                    },
-                    arrowKey: (dx, dy) => {
-                        body_rect[0] += dx;
-                        body_rect[1] += dy;
-                        this.updateBody();
-                    },
-                });
-            }
-            else {
-                const preview = this.#adelite.getElementById('preview');
-                let previewTop = parseInt(preview.style.top) | 0;
-                let previewLeft = parseInt(preview.style.left) | 0;
-                tmp.start(e, { x: 0, y: 0, w: 2048, h: 2048 });
-                tmp.setEventListener({
-                    mouseMove(dx, dy) {
-                        previewTop += dy;
-                        previewLeft += dx;
-                        preview.style.top = previewTop + 'px';
-                        preview.style.left = previewLeft + 'px';
-                    },
-                    arrowKey(dx, dy) {
-                        console.log(previewTop, previewLeft, dx, dy);
-                        previewTop += dy;
-                        previewLeft += dx;
-                        preview.style.top = previewTop + 'px';
-                        preview.style.left = previewLeft + 'px';
-                    },
-                });
-            }
-
-            this.#holdOrigin = tmp;
+        if (e.button != MOUSE_BUTTON_PRIMARY) {
+            return ;
         }
+
+        const currentCharacter = this.#characters[this.#characterIndex];
+        const currentFace = this.#faces[this.#faceIndex];
+
+        const tmp = new HoldObject(this.#renderer);
+        const body_rect = currentCharacter.body_rect;
+        const face_rect = currentCharacter.face_rect[currentFace];
+        const example_rect = this.#renderer.getExample();
+
+        if (tmp.start(e, { x: face_rect[0], y: face_rect[1], w: face_rect[4], h: face_rect[5] })) {
+            const x = face_rect[0];
+            const y = face_rect[1];
+            tmp.setEventListener({
+                mouseMove: (dx, dy) => {
+                    face_rect[0] = x + dx;
+                    face_rect[1] = y + dy;
+                    this.#renderer.setFace(face_rect);
+                    this.updateFace();
+                },
+                arrowKey: (dx, dy) => {
+                    face_rect[0] += dx;
+                    face_rect[1] += dy;
+                    this.#renderer.setFace(face_rect);
+                    this.updateFace();
+                },
+            });
+        }
+        else if (tmp.start(e, { x: face_rect[2], y: face_rect[3], w: face_rect[4], h: face_rect[5] })) {
+            const x = face_rect[2];
+            const y = face_rect[3];
+            tmp.setEventListener({
+                mouseMove: (dx, dy) => {
+                    face_rect[2] = x + dx;
+                    face_rect[3] = y + dy;
+                    this.#renderer.setFace(face_rect);
+                    this.updateFace();
+                },
+                arrowKey: (dx, dy) => {
+                    face_rect[2] += dx;
+                    face_rect[3] += dy;
+                    this.#renderer.setFace(face_rect);
+                    this.updateFace();
+                },
+            });
+        }
+        else if (example_rect && tmp.start(e, example_rect)) {
+            tmp.setEventListener({
+                mouseMove: (dx, dy) => {
+                    this.#renderer.setExample(example_rect.x + dx, example_rect.y + dy);
+                    this.updateBody();
+                },
+                arrowKey: (dx, dy) => {
+                    const rect = this.#renderer.getExample();
+                    this.#renderer.setExample(rect.x + dx, rect.y + dy);
+                    this.updateBody();
+                },
+            });
+        }
+        else if (tmp.start(e, { x: body_rect[0], y: body_rect[1], w: body_rect[2], h: body_rect[3] })) {
+            const x = body_rect[0];
+            const y = body_rect[1];
+            tmp.setEventListener({
+                mouseMove: (dx, dy) => {
+                    body_rect[0] = x + dx;
+                    body_rect[1] = y + dy;
+                    this.updateBody();
+                },
+                arrowKey: (dx, dy) => {
+                    body_rect[0] += dx;
+                    body_rect[1] += dy;
+                    this.updateBody();
+                },
+            });
+        }
+        else {
+            const preview = this.#adelite.getElementById('preview');
+            let previewTop = parseInt(preview.style.top) | 0;
+            let previewLeft = parseInt(preview.style.left) | 0;
+            tmp.start(e, { x: 0, y: 0, w: 2048, h: 2048 });
+            tmp.setEventListener({
+                mouseMove(dx, dy) {
+                    previewTop += dy;
+                    previewLeft += dx;
+                    preview.style.top = previewTop + 'px';
+                    preview.style.left = previewLeft + 'px';
+                },
+                arrowKey(dx, dy) {
+                    console.log(previewTop, previewLeft, dx, dy);
+                    previewTop += dy;
+                    previewLeft += dx;
+                    preview.style.top = previewTop + 'px';
+                    preview.style.left = previewLeft + 'px';
+                },
+            });
+        }
+
+        this.#holdOrigin = tmp;
     }
 
-    /*
+    /**
      * マウスハンドラ
+     * @param {MouseEvent} e
      */
     onMouseMove(e) {
         if (this.#holdOrigin) {
@@ -568,6 +575,10 @@ export default class CharacterEditor {
         }
     }
 
+    /**
+     * mouse up evemt
+     * @param {MouseEvent} e 
+     */
     onMouseUp(e) {
         switch (e.button) {
         case MOUSE_BUTTON_PRIMARY:
@@ -583,6 +594,10 @@ export default class CharacterEditor {
         }
     }
 
+    /**
+     * mouse wheel event
+     * @param {WheelEvent} e 
+     */
     onWheel(e) {
         if (e.deltaY < 0) {
             this.#renderer.scaleUp();
@@ -594,23 +609,16 @@ export default class CharacterEditor {
         }
     }
 
+    /**
+     * paste event
+     * @param {Event} e 
+     */
     onPaste(e) {
-        if (this.#renderer) {
-            const fr = new FileReader();
-            fr.addEventListener('load', (e) => {
-                if (typeof e.target.result === 'string') {
-                    const img = new Image;
-                    img.src = e.target.result;
-                    img.addEventListener('load', () => {
-                        this.#renderer.setExample(0, 0, img);
-                        this.#renderer.update();    
-                    });
-                }
-                else {
-                    console.error(`Invalid result type: ${typeof e.target.result}`);
-                }
-            });
-            fr.readAsDataURL(e.clipboardData.items[0].getAsFile());
+        if (this.#renderer && e instanceof ClipboardEvent) {
+            Nina.readAsImageFromClipboard(e).then((img) => {
+                this.#renderer.setExample(0, 0, img);
+                this.#renderer.update();
+            }).catch(printStack);
         }
     }
 
@@ -897,8 +905,11 @@ class CharacterTestRenderer {
         }
         else {
             this.#path = path;
-            Nina.readAsDataURL(this.#config.data.texture.character + '/' + path)
-                .then((url) => this.#image.src = url)
+            Nina.readAsImage(this.#config.data.texture.character + '/' + path)
+                .then((img) => { 
+                    this.#image = img;
+                    this.update();
+                })
                 .catch(printStack);
         }
     };

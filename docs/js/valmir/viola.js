@@ -7,7 +7,7 @@
  */
 'use strict';
 
-import { raiseError } from "../blanc/lisette.js";
+import { makeError } from "../blanc/lisette.js";
 
 const DXT5_BLOCK_SIZE = 16;
 
@@ -163,128 +163,119 @@ function readColors(data, i) {
 }
 
 /**
- * @class Viola the DXT5 texture loader
+ * make data url from DXT5 formatted Uint8Array
+ * @param {Uint8Array} data
+ * @param {HTMLCanvasElement} canvas
+ * @note DXT5 texture block format  
+ * 1 block represens 4x4 pixel box  
+ *   
+ * abbreviations:  
+ *     ai: alpha index value  
+ *     ci: color index value  
+ *   
+ * bit       7   6   5   4   3   2   1   0  
+ *         +-------------------------------+  
+ * byte  0 |            alpha 0            |  
+ *         +-------------------------------+  
+ * byte  1 |            alpha 1            |  
+ *         +-------+-----------+-----------+  
+ * byte  2 |-i  2  |   ai  1   |   ai  0   |  
+ *         +---+---+-------+---+-------+---+  
+ * byte  3 |-5 |   ai  4   |   ai  3   | a-|  
+ *         +---+-------+---+-------+---+---+  
+ * byte  4 |   ai  7   |   ai  6   |   ai -|  
+ *         +-------+---+-------+---+-------+  
+ * byte  5 |-i 10  |   ai  9   |   ai  8   |  
+ *         +---+---+-----------+-------+---+  
+ * byte  6 |-13|   ai 12   |   ai 11   | a-|  
+ *         +---+-------+---+-------+---+---+  
+ * byte  7 |   ai 15   |   ai 14   |   ai -|  
+ *         +-----------+-----------+-------+  
+ * byte  8 |-green     |    color0 blue    |  
+ *         +-------------------------------+  
+ * byte  9 |    color0 red      |   color0-|  
+ *         +-------------------------------+  
+ * byte 10 |-green     |    color1 blue    |  
+ *         +-------------------------------+  
+ * byte 11 |    color1 red      |   color1-|  
+ *         +-------------------------------+  
+ * byte 12 | ci  3 | ci  2 | ci  1 | ci  0 |  
+ *         +-------------------------------+  
+ * byte 13 | ci  7 | ci  6 | ci  5 | ci  4 |  
+ *         +-------------------------------+  
+ * byte 14 | ci 11 | ci 10 | ci  9 | ci  8 |  
+ *         +-------------------------------+  
+ * byte 15 | ci 15 | ci 14 | ci 13 | ci 12 |  
+ *         +-------------------------------+
  */
-class Viola {
-    constructor() {
-        console.log('Viola!');
-        this.#canvas = document.createElement('canvas');
-        this.#ctx = this.#canvas.getContext('2d');
+export function load(data, canvas) {
+    if (data.length & 0x0f) {
+        throw makeError(`Invalid data length: ${data.length}, DXT5 byte size should be aligned to 16x` );
     }
 
-    /**
-     * make data url from DXT5 formatted Uint8Array
-     * @param {Uint8Array} data
-     * @returns {string} data url
-     * @note DXT5 texture block format  
-     * 1 block represens 4x4 pixel box  
-     *   
-     * abbreviations:  
-     *     ai: alpha index value  
-     *     ci: color index value  
-     *   
-     * bit       7   6   5   4   3   2   1   0  
-     *         +-------------------------------+  
-     * byte  0 |            alpha 0            |  
-     *         +-------------------------------+  
-     * byte  1 |            alpha 1            |  
-     *         +-------+-----------+-----------+  
-     * byte  2 |-i  2  |   ai  1   |   ai  0   |  
-     *         +---+---+-------+---+-------+---+  
-     * byte  3 |-5 |   ai  4   |   ai  3   | a-|  
-     *         +---+-------+---+-------+---+---+  
-     * byte  4 |   ai  7   |   ai  6   |   ai -|  
-     *         +-------+---+-------+---+-------+  
-     * byte  5 |-i 10  |   ai  9   |   ai  8   |  
-     *         +---+---+-----------+-------+---+  
-     * byte  6 |-13|   ai 12   |   ai 11   | a-|  
-     *         +---+-------+---+-------+---+---+  
-     * byte  7 |   ai 15   |   ai 14   |   ai -|  
-     *         +-----------+-----------+-------+  
-     * byte  8 |-green     |    color0 blue    |  
-     *         +-------------------------------+  
-     * byte  9 |    color0 red      |   color0-|  
-     *         +-------------------------------+  
-     * byte 10 |-green     |    color1 blue    |  
-     *         +-------------------------------+  
-     * byte 11 |    color1 red      |   color1-|  
-     *         +-------------------------------+  
-     * byte 12 | ci  3 | ci  2 | ci  1 | ci  0 |  
-     *         +-------------------------------+  
-     * byte 13 | ci  7 | ci  6 | ci  5 | ci  4 |  
-     *         +-------------------------------+  
-     * byte 14 | ci 11 | ci 10 | ci  9 | ci  8 |  
-     *         +-------------------------------+  
-     * byte 15 | ci 15 | ci 14 | ci 13 | ci 12 |  
-     *         +-------------------------------+
-     */
-    load(data) {
-        if (data.length & 0x0f) {
-            raiseError(`Invalid data length: ${data.length}, DXT5 byte size should be aligned to 16x` );
-        }
+    const { width, height } = dataSizeToRect(data.length);
 
-        const { width, height } = dataSizeToRect(data.length);
+    /*
+    * reserve clamped array for width * rgba * height
+    */
+    const lineBytes = width << 2;
+    const imageArray = new Uint8ClampedArray(lineBytes * height);
 
+    /*
+    * iterate for each block(16 bytes) 
+    */
+    for (let i = data.length, blockNumber = i / DXT5_BLOCK_SIZE; i;) {
         /*
-        * reserve clamped array for width * rgba * height
+        * read alpha and color array
         */
-        const lineBytes = width << 2;
-        const imageArray = new Uint8ClampedArray(lineBytes * height);
+        i -= DXT5_BLOCK_SIZE;
+        --blockNumber;
+        const alpha = readAlphas(data, i);
+        const color = readColors(data, i);
 
-        /*
-        * iterate for each block(16 bytes) 
-        */
-        for (let i = data.length, blockNumber = i / DXT5_BLOCK_SIZE; i;) {
-            /*
-            * read alpha and color array
-            */
-            i -= DXT5_BLOCK_SIZE;
-            --blockNumber;
-            const alpha = readAlphas(data, i);
-            const color = readColors(data, i);
+        /**
+         * set data for each line
+         */
+        const left = ((blockNumber << 2) % width) << 2;
+        const line = ((blockNumber << 2) / width | 0) << 2;
+        for (let l = 4; l--; ) {
+            let bytes = (height - 1 - line - l) * lineBytes + left;
+            let pi = (l << 2);
 
-            /**
-             * set data for each line
-             */
-            const left = ((blockNumber << 2) % width) << 2;
-            const line = ((blockNumber << 2) / width | 0) << 2;
-            for (let l = 4; l--; ) {
-                let bytes = (height - 1 - line - l) * lineBytes + left;
-                let pi = (l << 2);
+            imageArray[bytes++] = color[pi][0];
+            imageArray[bytes++] = color[pi][1];
+            imageArray[bytes++] = color[pi][2]; 
+            imageArray[bytes++] = alpha[pi++];
 
-                imageArray[bytes++] = color[pi][0];
-                imageArray[bytes++] = color[pi][1];
-                imageArray[bytes++] = color[pi][2]; 
-                imageArray[bytes++] = alpha[pi++];
+            imageArray[bytes++] = color[pi][0];
+            imageArray[bytes++] = color[pi][1];
+            imageArray[bytes++] = color[pi][2]; 
+            imageArray[bytes++] = alpha[pi++];
 
-                imageArray[bytes++] = color[pi][0];
-                imageArray[bytes++] = color[pi][1];
-                imageArray[bytes++] = color[pi][2]; 
-                imageArray[bytes++] = alpha[pi++];
+            imageArray[bytes++] = color[pi][0];
+            imageArray[bytes++] = color[pi][1];
+            imageArray[bytes++] = color[pi][2]; 
+            imageArray[bytes++] = alpha[pi++];
 
-                imageArray[bytes++] = color[pi][0];
-                imageArray[bytes++] = color[pi][1];
-                imageArray[bytes++] = color[pi][2]; 
-                imageArray[bytes++] = alpha[pi++];
-
-                imageArray[bytes++] = color[pi][0];
-                imageArray[bytes++] = color[pi][1];
-                imageArray[bytes++] = color[pi][2]; 
-                imageArray[bytes] = alpha[pi];
-            }
+            imageArray[bytes++] = color[pi][0];
+            imageArray[bytes++] = color[pi][1];
+            imageArray[bytes++] = color[pi][2]; 
+            imageArray[bytes]   = alpha[pi];
         }
-
-        this.#canvas.width = width;
-        this.#canvas.height = height;
-        this.#ctx.putImageData(new ImageData(imageArray, width, height), 0, 0);
-        return this.#canvas.toDataURL();
     }
 
-    /** @type {HTMLCanvasElement} */
-    #canvas = null;
-
-    /** @type {CanvasRenderingContext2D} */
-    #ctx = null;    
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.putImageData(new ImageData(imageArray, width, height), 0, 0);
 }
 
-export default new Viola();
+export function loadAsCanvas(data) {
+    const canvas = document.createElement('canvas');
+    load(data, canvas);
+    return canvas;
+}
+
+export function loadAsDataURL(data) {
+    return loadAsCanvas(data).toDataURL();
+}

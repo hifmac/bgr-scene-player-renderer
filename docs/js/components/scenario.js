@@ -12,7 +12,7 @@ import {
     last,
     printStack
 } from '../blanc/lisette.js';
-import Nina from '../valmir/nina.js';
+import * as Nina from '../valmir/nina.js';
 import Adelite from '../sandica/adelite.js';
 
 const template = {
@@ -78,6 +78,9 @@ export default class Scenario {
             }
             else if ('view' in data.page) {
                 this.onViewChanged(data.page.view);
+            }
+            else if ('html' in data.page) {
+                IPC.loadHtml(data.page.html);
             }
             else {
                 console.error('Cannot handle: ', data.page);

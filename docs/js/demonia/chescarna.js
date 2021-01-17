@@ -8,7 +8,7 @@
 'use strict';
 
 import {
-    raiseError,
+    makeError,
     zip
 } from '../blanc/lisette.js';
 import * as Rudesia from './rudesia.js';
@@ -29,7 +29,7 @@ export class Component {
      * @param {Object[]} context contest stack
      */
     setContext(context) {
-        this.#context = [ ...context, this, Component.BUILTIN_OBJECT ];
+        this.#context = [ ...context, this ];
     }
 
     /**
@@ -48,7 +48,7 @@ export class Component {
      * @returns {Object}
      */
     getAttribute(name) {
-        raiseError('No getAttribute implementation');
+        throw makeError('No getAttribute implementation');
     }
     
     /**
@@ -57,7 +57,7 @@ export class Component {
      * @param {Object} value 
      */
     setAttribute(name, value) {
-        raiseError('No setAttribute implementation');
+        throw makeError('No setAttribute implementation');
     }
     
     /**
@@ -66,7 +66,7 @@ export class Component {
      * @param {function(Event): void} listener 
      */
     addEventListener(name, listener) {
-        raiseError('No addEventListener implementation');
+        throw makeError('No addEventListener implementation');
     }
     
     /**
@@ -74,7 +74,7 @@ export class Component {
      * @param {Component} component 
      */
     appendChild(component) {
-        raiseError('No appendChild implementation');
+        throw makeError('No appendChild implementation');
     }
     
     /**
@@ -82,14 +82,14 @@ export class Component {
      * @param {Component} component 
      */
     removeChild(component) {
-        raiseError('No removeChild implementation');
+        throw makeError('No removeChild implementation');
     }
     
     /**
      * clear all children of this component
      */
     clearChild() {
-        raiseError('No clearChild implementation');
+        throw makeError('No clearChild implementation');
     }
 
     /**
@@ -107,90 +107,6 @@ export class Component {
         return this.#context;
     }
 
-        /**
-     * built-in object for Chescarna component
-     */
-    static BUILTIN_OBJECT = {
-        'true': true,
-        'false': false,
-        'null': null,
-        'undefined': undefined,
-        'Array': Array,
-        'Object': Object,
-        'parseInt': parseInt,
-        'parseFloat': parseFloat,
-        'JSON': JSON,
-        'Map': Map,
-        'Set': Set,
-        'Math': Math,
-        'Date': Date,
-        'NaN': NaN,
-        'URL': URL,
-        'Infinity': Infinity,
-    
-        /**
-         * add two values
-         * @param {any} a left hand side value
-         * @param {any} b right hand side value
-         * @returns {any} addition result
-         */
-        add(a, b) {
-            return a + b;
-        },
-    
-        /**
-         * subtract two values
-         * @param {any} a left hand side value
-         * @param {any} b right hand side value
-         * @returns {any} subtract result
-         */
-        sub(a, b) {
-            return a - b;
-        },
-    
-        /**
-         * multiple two values
-         * @param {any} a left hand side value
-         * @param {any} b right hand side value
-         * @returns {any} multiple result
-         */
-        mul(a, b) {
-            return a * b;
-        },
-    
-        /**
-         * divide two values
-         * @param {any} a left hand side value
-         * @param {any} b right hand side value
-         * @returns {any} division result
-         */
-        div(a, b) {
-            return a / b;
-        },
-    
-    
-        /**
-         * mod two values
-         * @param {any} a left hand side value
-         * @param {any} b right hand side value
-         * @returns {any} modular result
-         */
-        mod(a, b) {
-            return a % b;
-        },
-    
-        /**
-         * new operator
-         * @template T type to construct
-         * @param {new (...Object) => T} ctor constructor
-         * @param {any[]} args constructor arguments
-         * @returns {T} constructed object
-         */
-        new(ctor, args) {
-            return new ctor(...args);
-        }
-    };
-
     /** @type {() => void} */
     #updater = () => {};
 
@@ -199,21 +115,14 @@ export class Component {
 }
 
 /**
- * addtional components
+ * @typedef {{
+ *     iterator: any[],
+ *     children: {
+ *         condition: boolean,
+ *         create: function(function(string): Component): Component
+ *     }[]
+ * }} Dependency
  */
-const PRECOMPILED_VIEWS = {};
-
-/**
- * @param {string} name 
- * @param {View} view
- */
-export function registerView(name, view) {
-    if (name in PRECOMPILED_VIEWS) {
-        throw new Error(`${name} is already registered`);
-    }
-
-    PRECOMPILED_VIEWS[name] = view;
-};
 
 /**
  * @class Chescarna View
@@ -256,32 +165,17 @@ export class View {
             }
             else {
                 this.#childTags.push(childTag);
-                if (childTag in PRECOMPILED_VIEWS) {
-                    this.#children.push(PRECOMPILED_VIEWS[childTag]);
-                }
-                else {
-                    this.#children.push(new View(childTag, template[childTag]));
-                }
+                this.#children.push(new View(childTag, template[childTag]));
             }
         }
     };
-
-    /**
-     * @typedef {{
-     *     iterator: any[],
-     *     children: {
-     *         condition: boolean,
-     *         create: function(function(string): Component): Component
-     *     }[]
-     * }} Dependency
-     */
 
     /**
      * build view
      * @param {Object[]} contextStack
      * @returns {Dependency}
      */
-    build(contextStack) {
+    buildInternnal(contextStack) {
         const dependencies = {
             /** @type {Object[]} */
             iterator: null,
@@ -311,6 +205,54 @@ export class View {
     };
 
     /**
+     * build view
+     * @param {Object[]} contextStack
+     * @returns {Dependency}
+     */
+    build(contextStack) {
+        /** @type {Dependency} */
+        const dependency = {
+            iterator: null,
+            children: [],
+        };
+
+        if (this.#forEach) {
+            const name = this.#forEach.itor;
+            dependency.iterator = this.#forEach.list(contextStack);
+            for (let itor of dependency.iterator) {
+                const itorContext = [ {}, ...contextStack ];
+                itorContext[0][name] = itor;
+                dependency.children.push({
+                    condition: this.#condition(itorContext),
+                    create: (createComponent) => this.createComponent(createComponent, itorContext)
+                });
+            }
+        }
+        else {
+            dependency.children.push({
+                condition: this.#condition(contextStack),
+                create: (createComponent) => this.createComponent(createComponent, contextStack)
+            });
+        }
+
+        return dependency;
+    };
+
+    /**
+     * build view
+     * @param {Object[]} contextStack
+     * @param {(string) => Component} createComponent
+     * @returns {Component}
+     */
+    buildComponent(contextStack, createComponent) {
+        const dependencies = this.build(contextStack);
+        if (dependencies.iterator !== null || dependencies.children.length !== 1) {
+            throw makeError('the root of the template must not iterate');
+        }
+        return dependencies.children[0].create(createComponent);
+    };
+
+    /**
      * @param {function(string): Component} createComponent 
      * @param {Object[]} contextStack
      */
@@ -324,7 +266,7 @@ export class View {
             });
         }
 
-        for (let key in this.#once) {
+        for (const key in this.#once) {
             component.setAttribute(key, this.#once[key](component.context));
         }
 

@@ -7,7 +7,6 @@
  */
 'use strict';
 
-import { raiseError } from '../blanc/lisette.js';
 import * as Chescarna from '../demonia/chescarna.js';
 
 /**
@@ -165,11 +164,9 @@ export default class Adelite {
      */
     show(context) {
         this.#elementDict = {};
-        const dependency = this.#view.build([ context, this.#elementDict ]);
-        if (dependency.children.length != 1) {
-            raiseError('Adelite root component must be 1');
-        }
-        this.#component = dependency.children[0].create((tagName) => this.createComponent(tagName));
+        this.#component = this.#view.buildComponent(
+            [ context, this.#elementDict ],
+            (tagName) => this.createComponent(tagName));
         return Chescarna.update(this.#component);
     }
 

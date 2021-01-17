@@ -7,7 +7,7 @@
  */
 'use strict';
 
-import Nina from '../valmir/nina.js';
+import * as Nina from '../valmir/nina.js';
 import Adelite from '../sandica/adelite.js';
 import { printStack } from '../blanc/lisette.js';
 

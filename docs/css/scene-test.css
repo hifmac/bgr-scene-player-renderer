@@ -1,0 +1,26 @@
+@import './common.css';
+
+#sceneTestCanvas {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    width: 1024px;
+    height: 576px;
+}
+
+#sceneTestUI {
+    position: absolute;
+    color: white;
+    background-color: #000000C0;
+    left: 0px;
+    top: 0px;
+}
+
+.text-size {
+    width: 40px
+}
+
+.text-color {
+    width: 64px
+}
+

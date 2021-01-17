@@ -1,0 +1,23 @@
+{
+    "debug":{
+        "subpages":[
+            "character_test",
+            "texture_test",
+            "file_check",
+            "scene_test",
+            "widget_designer"
+        ],
+        "id":"debug",
+        "title":"デバッグ"
+    },
+    "scene_test":{
+        "html": "scene-test.html",
+        "id":"scene_test",
+        "title":"シーンテスト"
+    },
+    "widget_designer":{
+        "html": "widget-designer.html",
+        "id":"widget_designer",
+        "title":"画面配置テスト"
+    }
+}

@@ -9,7 +9,8 @@
 
 import {
     last,
-    raiseError
+    makeError,
+    SETTINGS
 } from '../blanc/lisette.js';
 
 /**
@@ -59,6 +60,95 @@ const TOKEN_CALL = 'call';
 const TOKEN_OPERATOR = 'operator';
 
 /**
+ * built-in object for Chescarna component
+ */
+const BUILTIN_OBJECT = {
+    'true': true,
+    'false': false,
+    'null': null,
+    'undefined': undefined,
+    'Array': Array,
+    'Object': Object,
+    'parseInt': parseInt,
+    'parseFloat': parseFloat,
+    'JSON': JSON,
+    'Map': Map,
+    'Set': Set,
+    'Math': Math,
+    'Date': Date,
+    'NaN': NaN,
+    'URL': URL,
+    'Infinity': Infinity,
+
+    /**
+     * add two values
+     * @param {any} a left hand side value
+     * @param {any} b right hand side value
+     * @returns {any} addition result
+     */
+    add(a, b) {
+        return a + b;
+    },
+
+    /**
+     * subtract two values
+     * @param {any} a left hand side value
+     * @param {any} b right hand side value
+     * @returns {any} subtract result
+     */
+    sub(a, b) {
+        return a - b;
+    },
+
+    /**
+     * multiple two values
+     * @param {any} a left hand side value
+     * @param {any} b right hand side value
+     * @returns {any} multiple result
+     */
+    mul(a, b) {
+        return a * b;
+    },
+
+    /**
+     * divide two values
+     * @param {any} a left hand side value
+     * @param {any} b right hand side value
+     * @returns {any} division result
+     */
+    div(a, b) {
+        return a / b;
+    },
+
+
+    /**
+     * mod two values
+     * @param {any} a left hand side value
+     * @param {any} b right hand side value
+     * @returns {any} modular result
+     */
+    mod(a, b) {
+        return a % b;
+    },
+
+    not(value) {
+        return !value;
+    },
+
+    /**
+     * new operator
+     * @template T type to construct
+     * @param {new (...Object) => T} ctor constructor
+     * @param {any[]} args constructor arguments
+     * @returns {T} constructed object
+     */
+    new(ctor, args) {
+        return new ctor(...args);
+    }
+};
+
+
+/**
  * @class multi level token stack
  */
 class TokenStack {
@@ -80,7 +170,7 @@ class TokenStack {
      */
     pop() {
         if (this.#stack[this.#level].length == 0) {
-            raiseError('No token to pop');
+            throw makeError('No token to pop');
         }
         return this.#stack[this.#level].pop();
     };
@@ -92,7 +182,7 @@ class TokenStack {
      */
     peek(offset=0) {
         if (this.#level < offset) {
-            raiseError('No token to peek');
+            throw makeError('No token to peek');
         }
         return last(this.#stack[this.#level - offset]);
     };
@@ -111,7 +201,7 @@ class TokenStack {
      */
     fall() {
         if (this.#level == 0) {
-            raiseError('No stack level to fall');
+            throw makeError('No stack level to fall');
         }
         const ret = this.#stack.pop();
         this.#level -= 1;
@@ -124,7 +214,7 @@ class TokenStack {
      */
     get(level) {
         if (this.#level < level) {
-            raiseError('No stack level to get');
+            throw makeError('No stack level to get');
         }
         return this.#stack[level];
     };
@@ -164,7 +254,7 @@ function makeToken(token) {
         };
     }
     else {
-        raiseError(`Unknown token: ${token}`);
+        throw makeError(`Unknown token: ${token}`);
     }
 }
 
@@ -240,14 +330,14 @@ function parse(string) {
     const stack = new TokenStack();
 
     let hasEffectiveOperand = false;
-    for (let token of stringToToken(string)) {
+    for (const token of stringToToken(string)) {
         switch (token.type) {
         case TOKEN_STRING:
         case TOKEN_SYMBOL:
         case TOKEN_INTEGER:
         case TOKEN_FLOAT:
             if (hasEffectiveOperand) {
-                raiseError(`Duplicated operand definition: ${token.name}/${token.value}`);
+                throw makeError(`Duplicated operand definition: ${token.name}/${token.value}`);
             }
 
             stack.push(token);
@@ -258,17 +348,17 @@ function parse(string) {
             switch (token.operator) {
             case '.':
                 if (!hasEffectiveOperand) {
-                    raiseError('No operand to reference');                
+                    throw makeError('No operand to reference');                
                 }
                 hasEffectiveOperand = false;
                 break;
 
             case ',':
                 if (stack.peek(1).type !== TOKEN_CALL && stack.peek(1).type !== TOKEN_ARRAY) {
-                    raiseError(`Invalid function call stacking with ${stack.peek(1).type}`);
+                    throw makeError(`Invalid function call stacking with ${stack.peek(1).type}`);
                 }
                 if (!hasEffectiveOperand) {
-                    raiseError('Unexpected comma operator for no operand');
+                    throw makeError('Unexpected comma operator for no operand');
                 }
                 hasEffectiveOperand = false;
 
@@ -297,7 +387,7 @@ function parse(string) {
                 switch (stack.peek(1).type) {
                 case TOKEN_INDEX:
                     if (stack.peek() == null) {
-                        raiseError(`No index value to refer`);
+                        throw makeError(`No index value to refer`);
                     }
                     stack.peek(1).index = stack.fall();
                     break;
@@ -310,14 +400,14 @@ function parse(string) {
                     }
                     break;
                 default:
-                    raiseError(`Invalid array index stacking with ${stack.peek(1).type}`);
+                    throw makeError(`Invalid array index stacking with ${stack.peek(1).type}`);
                 }
                 hasEffectiveOperand = true;
                 break;
 
             case '(':
                 if (!hasEffectiveOperand) {
-                    raiseError(`No operand to call function`);
+                    throw makeError(`No operand to call function`);
                 }
                 hasEffectiveOperand = false;
 
@@ -330,7 +420,7 @@ function parse(string) {
 
             case ')':
                 if (stack.peek(1).type !== TOKEN_CALL) {
-                    raiseError(`Invalid function call stacking with ${stack.peek(1).type}`);
+                    throw makeError(`Invalid function call stacking with ${stack.peek(1).type}`);
                 }
 
                 if (stack.peek()) {
@@ -343,17 +433,17 @@ function parse(string) {
                 break;
 
             default:
-                raiseError(`Unknown operator: ${token.operator}`);
+                throw makeError(`Unknown operator: ${token.operator}`);
             }
             break;
 
         default:
-            raiseError(`Unknown token type: ${token.type}`);
+            throw makeError(`Unknown token type: ${token.type}`);
         }
     }
 
     if (0 < stack.level) {
-        raiseError(`${stack.level} blacket or parenthesis are missing`);
+        throw makeError(`${stack.level} blacket or parenthesis are missing`);
     }
 
     return stack.get(0);
@@ -373,15 +463,15 @@ function parse(string) {
         case TOKEN_SYMBOL:
             if (resolver) {
                 const currentResolver = resolver;
-                resolver = function(contextStack) {
+                resolver = (contextStack) => {
                     const stack = currentResolver(contextStack);
                     stack.push(last(stack)[token.name]);
                     return stack;
                 };
             }
             else {
-                resolver = function(contextStack) {
-                    for (let context of contextStack) {
+                resolver = (contextStack) => {
+                    for (const context of contextStack) {
                         if (token.name in context) {
                             return [
                                 context,
@@ -389,7 +479,15 @@ function parse(string) {
                             ];
                         }
                     }
-                    return [ undefined ];
+
+                    if (token.name in BUILTIN_OBJECT) {
+                        return [
+                            BUILTIN_OBJECT,
+                            BUILTIN_OBJECT[token.name]
+                        ];
+                    }
+
+                    throw makeError(`${token.name} is undefined`);
                 };
             }
             break;
@@ -397,7 +495,7 @@ function parse(string) {
             const intValue = parseInt(token.value);
             if (resolver) {
                 const currentResolver = resolver;
-                resolver = function(contextStack) {
+                resolver = (contextStack) => {
                     const stack = currentResolver(contextStack);
                     stack.push(last(stack)[intValue]);
                     return stack;
@@ -411,7 +509,7 @@ function parse(string) {
             const floatValue = parseFloat(token.value);
             if (resolver) {
                 const currentResolver = resolver;
-                resolver = function(contextStack) {
+                resolver = (contextStack) => {
                     const stack = currentResolver(contextStack);
                     stack.push(last(stack)[floatValue]);
                     return stack;
@@ -424,7 +522,7 @@ function parse(string) {
         case TOKEN_STRING:
             if (resolver) {
                 const currentResolver = resolver;
-                resolver = function(contextStack) {
+                resolver = (contextStack) => {
                     const stack = currentResolver(contextStack);
                     stack.push(last(stack)[token.value]);
                     return stack;
@@ -437,7 +535,7 @@ function parse(string) {
         case TOKEN_INDEX: {
             const currentResolver = resolver;
             const indexResolver = compileTokens(token.index);
-            resolver = function(contextStack) {
+            resolver = (contextStack) => {
                 const stack = currentResolver(contextStack);
                 stack.push(last(stack)[indexResolver(contextStack)]);
                 return stack;
@@ -450,7 +548,7 @@ function parse(string) {
         case TOKEN_CALL: {
             const currentResolver = resolver;
             const argumentResolvers = Array.from(token.args, (x) => compileTokens(x));
-            resolver = function(contextStack) {
+            resolver = (contextStack) => {
                 const stack = currentResolver(contextStack);
                 const thisArg = last(stack, 1);
                 const func = last(stack);
@@ -459,12 +557,12 @@ function parse(string) {
             };
         }   break;
         default:
-            raiseError(`Invalid token type: ${token.type}`);
+            throw makeError(`Invalid token type: ${token.type}`);
         }
     }
 
     if (resolver === null) {
-        raiseError(`Unexpected token array: ${JSON.stringify(tokens)}`);
+        throw makeError(`Unexpected token array: ${JSON.stringify(tokens)}`);
     }
 
     return function (contextStack) {

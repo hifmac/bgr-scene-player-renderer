@@ -262,7 +262,7 @@ export function last(arr, index=0) {
  */
 export function makeTimeoutPromise(executor, timeout=1000) {
     return new Promise((resolve, reject) => {
-        const id = promiseTimeout.registerHandler(() => raiseError('timeout', reject), timeout);
+        const id = promiseTimeout.registerHandler(() => rejectError('timeout', reject), timeout);
         executor((value) => {
             resolve(value);
             promiseTimeout.clearHandler(id);
@@ -272,7 +272,8 @@ export function makeTimeoutPromise(executor, timeout=1000) {
 
 /**
  * merge object array into 1 array
- * @param {Object.<string, Object>[]} objs 
+ * @param {Object[]} objs
+ * @returns {Object}
  */
 export function mergeObject(objs) {
     const merged = {};
@@ -285,19 +286,22 @@ export function mergeObject(objs) {
 }
 
 /**
- * 
+ * make error and print stack trace log
+ * @param {string} status
+ * @returns {Error}
+ */
+export function makeError(status) {
+    console.error(status);
+    return (typeof status === 'string' ? new Error(status) : status);
+}
+
+/**
+ * reject error with status
  * @param {string} status
  * @param {(Error) => void} reject
  */
-export function raiseError(status, reject=undefined) {
-    const err = new Error(status);
-    console.error(err);
-    if (typeof reject !== undefined) {
-        reject(err);
-    }
-    else {
-        throw err;
-    }
+export function rejectError(status, reject) {
+    reject(makeError(status));
 }
 
 /**
