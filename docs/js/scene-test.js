@@ -207,11 +207,11 @@ const templateLilium = {
 const CHARACTER_POSITION = {
     left: {
         x: 1024 * 0.25 | 0,
-        y: 576 * 0.1 | 0
+        y: 576 * 0.25 | 0
     },
     right: {
         x: 1024 * 0.75 | 0,
-        y: 576 * 0.1 | 0
+        y: 576 * 0.25 | 0
     }
 };
 
@@ -491,7 +491,8 @@ class SceneTest {
             dx: flip ? (bodyRect.x + bodyRect.w - faceRect.dx - faceRect.dw) : (faceRect.dx - bodyRect.x),
             dy: faceRect.dy - bodyRect.y,
         };
-        const faceOffset = faceRect.dw >> 1;
+        const faceOffsetH = faceRect.dw >> 1;
+        const faceOffsetV = faceRect.dh >> 1;
 
         const ret = {
             body: null, 
@@ -503,8 +504,8 @@ class SceneTest {
             bodyRect.y,
             bodyRect.w,
             bodyRect.h,
-            hScale * (dest.x - faceOffset - bodyToFace.dx),
-            dest.y,
+            hScale * (dest.x - faceOffsetH - bodyToFace.dx),
+            dest.y - bodyToFace.dy,
             hScale * bodyRect.w,
             bodyRect.h,
         ];
