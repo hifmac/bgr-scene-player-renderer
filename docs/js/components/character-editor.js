@@ -179,7 +179,7 @@ const template = {
                 "input.face-dst-position-size character-texture-size": {
                     "once:type": "number",
                     "bind:value": "{{ face.get(dst[1]) }}",
-                    "on:change": "{{ face.set(dst[1], getAttribute('value')) }}",
+                    "on:change": "{{ face.set(dst[1], parseInt(getAttribute('value'))) }}",
                 },
                 "button.face-dst-position-sub": {
                     "once:type": "button",
@@ -206,7 +206,7 @@ const template = {
                 "input.face-src-position-size character-texture-size": {
                     "once:type": "number",
                     "bind:value": "{{ face.get(src[1]) }}",
-                    "on:change": "{{ face.set(src[1], getAttribute('value')) }}",
+                    "on:change": "{{ face.set(src[1], parseInt(getAttribute('value'))) }}",
                 },
                 "button.face-src-position-add": {
                     "once:type": "button",
@@ -232,7 +232,7 @@ const template = {
                 "input.body-position-size character-texture-size": {
                     "once:type": "number",
                     "bind:value": "{{ body.get(src[1]) }}",
-                    "on:change": "{{ body.set(src[1], getAttribute('value')) }}",
+                    "on:change": "{{ body.set(src[1], parseInt(getAttribute('value'))) }}",
                 },
                 "button.body-position-add": {
                     "once:type": "button",
@@ -306,6 +306,7 @@ export default class CharacterEditor {
                 const currentCharacter = this.editor.#characters[this.editor.#characterIndex];
                 if (currentCharacter) {
                     currentCharacter.body_rect[index] = value;
+                    console.log(currentCharacter);
                     this.editor.updateBody();
                 }
             }
