@@ -311,6 +311,48 @@ export function printStack(exc) {
     console.log(exc);
 }
 
+/**
+ * sort character object
+ * @param {{
+ *     name: string
+ * }[]} characters 
+ */
+export function sortCharacter(characters) {
+    /**
+     * get short unit name
+     * @param {string} name 
+     */
+    const getName = (name) => {
+        let pos = name.indexOf(']');
+        if (pos == -1) {
+            pos = name.indexOf('》');
+        }
+        return name.substring(pos + 1);
+    };
+
+    characters.sort((a, b) => {
+        const nameA = getName(a.name);
+        const nameB = getName(b.name);
+        if (nameA < nameB) {
+            return -1;
+        }
+        else if (nameB < nameA) {
+            return 1;
+        }
+        else {
+            if (a.name < b.name) {
+                return 1;
+            }
+            else if (b.name < a.name) {
+                return -1;
+            }
+            else {
+                return 0;
+            }
+        }
+    });
+}
+
 export const MOUSE_BUTTON_PRIMARY = 0;
 export const MOUSE_BUTTON_WHEEL = 1;
 export const MOUSE_BUTTON_SECONDARY = 2;

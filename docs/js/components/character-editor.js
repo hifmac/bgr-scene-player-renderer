@@ -12,7 +12,8 @@ import {
     mergeObject,
     printStack,
     MOUSE_BUTTON_PRIMARY,
-    MOUSE_BUTTON_SECONDARY
+    MOUSE_BUTTON_SECONDARY,
+    sortCharacter
 } from '../blanc/lisette.js';
 import * as Nina from '../valmir/nina.js';
 import Adelite from '../sandica/adelite.js';
@@ -329,6 +330,7 @@ export default class CharacterEditor {
             for (const key of Object.keys(characters)) {
                 this.#characters.push(characters[key]);
             }
+            sortCharacter(this.#characters);
             this.onCharacterChanged(this.#characterIndex);
         })
         .catch(printStack);

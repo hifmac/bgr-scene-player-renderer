@@ -10,7 +10,8 @@
 import {
     onLoad,
     Filesystem,
-    printStack
+    printStack,
+    sortCharacter
 } from './blanc/lisette.js';
 
 import Adelite from './sandica/adelite.js';
@@ -259,6 +260,7 @@ class SceneTest {
             for (const key in dialogAndCharacters[1]) {
                 this.#data.characters.push(dialogAndCharacters[1][key]);
             }
+            sortCharacter(this.#data.characters);
             this.#data.faces = Object.keys(this.#data.characters[0].face_rect);
             this.#data.front = this.createCharacter();
             this.#data.back = this.createCharacter();
