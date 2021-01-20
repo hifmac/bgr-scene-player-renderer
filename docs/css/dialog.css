@@ -170,7 +170,7 @@
     position: fixed;
     color: white;
     background-color: #00000080;
-    top: 48px;
+    top: 24px;
     width: 170px;
     font-family: monospace;
 }
@@ -186,6 +186,8 @@
 .character-texture-preview {
     background-color: #ffffffe0;
     position: absolute;
+    margin: 0px;
+    padding: 0px;
     top: 48px;
     left: 200px;
     z-index: -1;

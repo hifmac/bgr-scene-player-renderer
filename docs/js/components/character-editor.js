@@ -31,7 +31,7 @@ const CANVAS_SIZE = 2048;
  * }} CharacterJson
  */
 const template = {
-    "div#character-select": {
+    "div.character-select": {
         "select.select-character": {
             "on:change": "{{ onCharacterChanged(getAttribute('selectedIndex')) }}",
             "bind:selectedIndex": "{{ characterIndex }}",
@@ -461,6 +461,7 @@ function createData(characterEditor) {
          * mouse down event
          */
         onMouseDown(e) {
+            console.log(e)
             if (e.button != MOUSE_BUTTON_PRIMARY) {
                 return ;
             }
@@ -478,8 +479,8 @@ function createData(characterEditor) {
                 const y = face_rect[1];
                 tmp.setEventListener({
                     mouseMove: (dx, dy) => {
-                        face_rect[0] = x + dx;
-                        face_rect[1] = y + dy;
+                        face_rect[0] = x + dx / data.renderer.getScale() | 0;
+                        face_rect[1] = y + dy / data.renderer.getScale() | 0;
                         data.renderer.setFace(face_rect);
                         characterEditor.updateFace();
                     },
@@ -496,8 +497,8 @@ function createData(characterEditor) {
                 const y = face_rect[3];
                 tmp.setEventListener({
                     mouseMove: (dx, dy) => {
-                        face_rect[2] = x + dx;
-                        face_rect[3] = y + dy;
+                        face_rect[2] = x + dx / data.renderer.getScale() | 0;
+                        face_rect[3] = y + dy / data.renderer.getScale() | 0;
                         data.renderer.setFace(face_rect);
                         characterEditor.updateFace();
                     },
@@ -512,7 +513,9 @@ function createData(characterEditor) {
             else if (example_rect && tmp.start(e, example_rect)) {
                 tmp.setEventListener({
                     mouseMove: (dx, dy) => {
-                        data.renderer.setExample(example_rect.x + dx, example_rect.y + dy);
+                        data.renderer.setExample(
+                            example_rect.x + dx / data.renderer.getScale() | 0,
+                            example_rect.y + dy / data.renderer.getScale() | 0);
                         characterEditor.updateBody();
                     },
                     arrowKey: (dx, dy) => {
@@ -527,8 +530,8 @@ function createData(characterEditor) {
                 const y = body_rect[1];
                 tmp.setEventListener({
                     mouseMove: (dx, dy) => {
-                        body_rect[0] = x + dx;
-                        body_rect[1] = y + dy;
+                        body_rect[0] = x + dx / data.renderer.getScale() | 0;
+                        body_rect[1] = y + dy / data.renderer.getScale() | 0;
                         characterEditor.updateBody();
                     },
                     arrowKey: (dx, dy) => {
@@ -539,22 +542,17 @@ function createData(characterEditor) {
                 });
             }
             else {
-                let previewTop = parseInt(data.preview.style.top) | 0;
-                let previewLeft = parseInt(data.preview.style.left) | 0;
+                const previewTop = parseInt(data.preview.style.top) | 0;
+                const previewLeft = parseInt(data.preview.style.left) | 0;
                 tmp.start(e, { x: 0, y: 0, w: CANVAS_SIZE, h: CANVAS_SIZE });
                 tmp.setEventListener({
                     mouseMove(dx, dy) {
-                        previewTop += dy;
-                        previewLeft += dx;
-                        data.preview.style.top = previewTop + 'px';
-                        data.preview.style.left = previewLeft + 'px';
+                        data.preview.style.top = previewTop + dy  + 'px';
+                        data.preview.style.left = previewLeft + dx + 'px';
                     },
                     arrowKey(dx, dy) {
-                        console.log(previewTop, previewLeft, dx, dy);
-                        previewTop += dy;
-                        previewLeft += dx;
-                        data.preview.style.top = previewTop + 'px';
-                        data.preview.style.left = previewLeft + 'px';
+                        data.preview.style.top = parseInt(data.preview.style.top) + dy + 'px';
+                        data.preview.style.left = parseInt(data.preview.style.left) + dx + 'px';
                     },
                 });
             }
@@ -681,14 +679,13 @@ function createData(characterEditor) {
             const json = {};
             json[currentCharacter.id] = currentCharacter;
     
-            const downLoadLink = document.createElement('a');
-            downLoadLink.download = currentCharacter.id + ".json";
-            downLoadLink.href = URL.createObjectURL(new Blob([  JSON.stringify(json, undefined, 2) ], {type: 'text/plain'}));
-            downLoadLink.dataset.downloadurl = ["text/plain", downLoadLink.download, downLoadLink.href].join(":");
-            downLoadLink.click();
-            setTimeout(function() {
-                URL.revokeObjectURL(downLoadLink.href);
-            }, 60000);
+            const fr = new FileReader();
+            fr.addEventListener('load', (event) => {
+                if (typeof event.target.result === 'string') {
+                    saveURLAsFile(currentCharacter.id + ".json", event.target.result, 'text/plain')
+                }
+            });
+            fr.readAsDataURL(new Blob([  JSON.stringify(json, undefined, 2) ]));
         }
     };
     return data;
@@ -1046,16 +1043,13 @@ class HoldObject {
     }
 
     start(e, rect) {
-        this.#position = {
-            x: e.offsetX,
-            y: e.offsetY,
-        };
+        this.#position = e;
 
         const scale = this.#renderer.getScale();
-        this.#isStarted = rect.x <= this.#position.x / scale
-            && this.#position.x / scale < rect.x + rect.w
-            && rect.y <= this.#position.y / scale 
-            && this.#position.y / scale < rect.y + rect.h;
+        this.#isStarted = rect.x <= this.#position.offsetX / scale
+            && this.#position.offsetX / scale < rect.x + rect.w
+            && rect.y <= this.#position.offsetY / scale 
+            && this.#position.offsetY / scale < rect.y + rect.h;
 
         return this.#isStarted;
     }
@@ -1070,12 +1064,13 @@ class HoldObject {
         }
     }
 
+    /**
+     * on mouse move
+     * @param {MouseEvent} e 
+     */
     onMouseMove(e) {
         if (this.#isStarted && this.#eventListener) {
-            var scale = this.#renderer.getScale();
-            this.#eventListener.mouseMove(
-                (e.offsetX - this.#position.x) / scale | 0,
-                (e.offsetY - this.#position.y) / scale | 0);
+            this.#eventListener.mouseMove(e.x - this.#position.x, e.y - this.#position.y);
         }
     }
 
@@ -1084,10 +1079,7 @@ class HoldObject {
     }
 
     /**
-     * @type {{
-     *     x: number,
-     *     y: number
-     * }}
+     * @type {MouseEvent}
      */
     #position = null;
 

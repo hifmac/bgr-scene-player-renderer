@@ -353,6 +353,24 @@ export function sortCharacter(characters) {
     });
 }
 
+/**
+ * 
+ * @param {string} filename 
+ * @param {string} url 
+ * @param {string} type 
+ * @returns {Promise<Event>}
+ */
+export function saveURLAsFile(filename, url, type) {
+    const downLoadLink = document.createElement('a');
+    downLoadLink.download = filename;
+    downLoadLink.href = url;
+    downLoadLink.dataset.downloadurl = [type, downLoadLink.download, downLoadLink.href].join(":");
+    downLoadLink.click();
+    return new Promise((resolve) => {
+        downLoadLink.addEventListener('click', resolve);
+    });
+}
+
 export const MOUSE_BUTTON_PRIMARY = 0;
 export const MOUSE_BUTTON_WHEEL = 1;
 export const MOUSE_BUTTON_SECONDARY = 2;
