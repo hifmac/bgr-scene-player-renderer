@@ -13,10 +13,13 @@ import {
     printStack,
     MOUSE_BUTTON_PRIMARY,
     MOUSE_BUTTON_SECONDARY,
-    sortCharacter
+    sortCharacter,
+    saveURLAsFile
 } from '../blanc/lisette.js';
 import * as Nina from '../valmir/nina.js';
 import Adelite from '../sandica/adelite.js';
+
+const CANVAS_SIZE = 2048;
 
 /**{
  * @typedef {{
@@ -24,7 +27,7 @@ import Adelite from '../sandica/adelite.js';
  *     name: string,
  *     texture: string,
  *     body_rect: number[],
- *     face_rect: number[],
+ *     face_rect: Object.<string, number[]>,
  * }} CharacterJson
  */
 const template = {
@@ -256,480 +259,491 @@ const template = {
     "div#preview": {
         "once:class": "character-texture-preview",
         "canvas#character-texture-canvas": {
-            "once:width": 2048,
-            "once:height": 2048,
+            "once:width": CANVAS_SIZE,
+            "once:height": CANVAS_SIZE,
             "once:tabindex": 1,
             "on:mousedown": "{{ onMouseDown(event) }}",
             "on:mousemove": "{{ onMouseMove(event) }}",
             "on:keydown": "{{ onKeyDown(event) }}",
             "on:wheel": "{{ onWheel(event) }}",
+            "on:dblclick": "{{ onDoubleClick(event) }}"
         }
     }
 };
 
-export default class CharacterEditor {
-    constructor(id, config) {
-        this.#adelite = new Adelite(id, template);
-        this.#config = config;
+/**
+ * @typedef {{
+ *     preview: HTMLDivElement,
+ *     renderer: CharacterTestRenderer,
+ *     faceDstPositions: (string | number)[][],
+ *     faceSrcPositions: (string | number)[][],
+ *     bodyPositions: (string | number)[][],
+ *     characters: CharacterJson[],
+ *     faces: string[],
+ *     characterIndex: number,
+ *     faceIndex: number,
+ *     holdOrigin: HoldObject,
+ *     face: {
+ *         get: function(number): number,
+ *         set: function(number, number): void
+ *     },
+ *     body: {
+ *         get: function(number): number,
+ *         set: function(number, number): void
+ *     },
+ *     makeCharacterName: function(CharacterJson): string,
+ *     updateFaceEdge: function(number, number, number, number): void,
+ *     onCharacterChanged: function(number): void,
+ *     onFaceChanged: function(number): void,
+ *     onMouseDown: function(MouseEvent): void,
+ *     onMouseMove: function(MouseEvent): void,
+ *     onMouseUp: function(MouseEvent): void,
+ *     onWheel: function(WheelEvent): void,
+ *     onPaste: function(Event): void,
+ *     onKeyDown: function(KeyboardEvent): void,
+ *     onDoubleClick: function(): void,
+ *     save: function(): void,
+ * }} Data
+ */
 
-        this.face = {
-            editor: this,
+/**
+ * @param {CharacterEditor} characterEditor
+ * @returns {Data}
+ */
+function createData(characterEditor) {
+    /** @type {Data} */
+    const data = {
+        preview: null,
+        renderer: null, 
+        faceDstPositions: [
+            [ 'X:', 0, 50 ],
+            [ 'Y:', 1, 50 ]
+        ],
+        faceSrcPositions: [
+            [ 'X:', 2, 50 ],
+            [ 'Y:', 3, 50 ],
+            [ 'W:', 4, 10 ],
+            [ 'H:', 5, 10 ]
+        ],
+        bodyPositions: [
+            [ 'X:', 0, 50 ],
+            [ 'Y:', 1, 50 ],
+            [ 'W:', 2, 50 ],
+            [ 'H:', 3, 50 ]
+        ],
+        characters: [],
+        faces: [],
+        characterIndex: 0,
+        faceIndex: 0,
+        holdOrigin: null,
 
+        face: {
             get(index) {
-                const currentCharacter = this.editor.#characters[this.editor.#characterIndex];
-                const currentFace = this.editor.#faces[this.editor.#faceIndex];        
+                const currentCharacter = data.characters[data.characterIndex];
+                const currentFace = data.faces[data.faceIndex];        
                 if (currentCharacter && currentFace) {
                     return currentCharacter.face_rect[currentFace][index];
                 }
                 return 0;
             },
+
             set(index, value) {
-                const currentCharacter = this.editor.#characters[this.editor.#characterIndex];
-                const currentFace = this.editor.#faces[this.editor.#faceIndex];        
+                const currentCharacter = data.characters[data.characterIndex];
+                const currentFace = data.faces[data.faceIndex];        
                 if (currentCharacter && currentFace) {
                     currentCharacter.face_rect[currentFace][index] = value;
-                    this.editor.updateFace();
+                    characterEditor.updateFace();
                 }
             }
-        };
+        },
 
-        this.body = {
-            editor: this,
-
+        body: {
             get(index) {
-                const currentCharacter = this.editor.#characters[this.editor.#characterIndex];
+                const currentCharacter = data.characters[data.characterIndex];
                 if (currentCharacter) {
                     return currentCharacter.body_rect[index];
                 }
                 return 0;
             },
             set(index, value) {
-                const currentCharacter = this.editor.#characters[this.editor.#characterIndex];
+                const currentCharacter = data.characters[data.characterIndex];
                 if (currentCharacter) {
                     currentCharacter.body_rect[index] = value;
                     console.log(currentCharacter);
-                    this.editor.updateBody();
+                    characterEditor.updateBody();
                 }
             }
-        };
+        },
 
-        window.addEventListener('mouseup', (event) => this.onMouseUp(event));
-        window.addEventListener('paste', (event) => this.onPaste(event));
+        makeCharacterName(character) {
+            let name = character.name;
+    
+            const noOrInitialBodyPosition = character.body_rect.length !== 4
+                || JSON.stringify(character.body_rect) == JSON.stringify(CharacterEditor.INITIAL_BODY_POSITION);
+    
+            let remaining_faces = 0;
+            for (const face in character.face_rect) {
+                const noOrInitialFacePosition = character.face_rect[face].length !== 6 
+                    || JSON.stringify(character.face_rect[face]) === JSON.stringify(CharacterEditor.INITIAL_FACE_POSITION);
+                remaining_faces += (noOrInitialFacePosition ? 1 : 0);
+            }
+    
+            if (noOrInitialBodyPosition || remaining_faces) {
+                if (noOrInitialBodyPosition && remaining_faces) {
+                    name = '[×] ' + name;
+                }
+                else {
+                    name = '[△] ' + name;
+                }
+                name += '(';
+                name += '身体：' + (noOrInitialBodyPosition ? '未' : '完');
+                name += ', 表情：' + (remaining_faces ? '残' + remaining_faces : '完');
+                name += ')';
+            }
+            else if (!noOrInitialBodyPosition && !remaining_faces) {
+                name = '[〇] ' + name;
+            }
+    
+            return name;  
+        },
+
+        updateFaceEdge(dx, dy, dw, dh) {
+            const currentCharacter = data.characters[data.characterIndex];
+            const currentFace = data.faces[data.faceIndex];
+            const face_rect = currentCharacter.face_rect[currentFace];
+    
+            face_rect[0] += dx;
+            face_rect[1] += dy;
+            face_rect[2] += dx;
+            face_rect[3] += dy;
+            face_rect[4] += dw;
+            face_rect[5] += dh;
+    
+            characterEditor.updateFace();
+        },
+
+        onCharacterChanged(index) {
+            data.characterIndex = index;
+            const currentCharacter = data.characters[data.characterIndex];
+            data.renderer.setCharacter(currentCharacter.texture);
+            data.faces = Object.keys(currentCharacter.face_rect);
+    
+            const currentFace = data.faces[data.faceIndex];
+    
+            if (currentCharacter.face_rect[currentFace].length == 0) { 
+                currentCharacter.face_rect[currentFace] = CharacterEditor.INITIAL_FACE_POSITION.slice();
+            }
+            characterEditor.updateFace();
+    
+            if (currentCharacter.body_rect.length == 0) { 
+                currentCharacter.body_rect = CharacterEditor.INITIAL_BODY_POSITION.slice();
+            }
+            characterEditor.updateBody();
+        },
+    
+        onFaceChanged(index) {
+            const currentCharacter = data.characters[data.characterIndex];
+            const oldValues = currentCharacter.face_rect[data.faces[data.faceIndex]].slice();
+    
+            data.faceIndex = index;
+            const currentFace = data.faces[data.faceIndex];
+    
+            if (currentCharacter.face_rect[currentFace].length == 0) {
+                currentCharacter.face_rect[currentFace] = oldValues;
+            }
+            if (currentCharacter.face_rect[currentFace].length == 0) {
+                currentCharacter.face_rect[currentFace] = CharacterEditor.INITIAL_FACE_POSITION.slice();
+            }
+            characterEditor.updateFace();
+        },
+
+        /**
+         * mouse down event
+         */
+        onMouseDown(e) {
+            if (e.button != MOUSE_BUTTON_PRIMARY) {
+                return ;
+            }
+
+            const currentCharacter = data.characters[data.characterIndex];
+            const currentFace = data.faces[data.faceIndex];
+
+            const tmp = new HoldObject(data.renderer);
+            const body_rect = currentCharacter.body_rect;
+            const face_rect = currentCharacter.face_rect[currentFace];
+            const example_rect = data.renderer.getExample();
+
+            if (tmp.start(e, { x: face_rect[0], y: face_rect[1], w: face_rect[4], h: face_rect[5] })) {
+                const x = face_rect[0];
+                const y = face_rect[1];
+                tmp.setEventListener({
+                    mouseMove: (dx, dy) => {
+                        face_rect[0] = x + dx;
+                        face_rect[1] = y + dy;
+                        data.renderer.setFace(face_rect);
+                        characterEditor.updateFace();
+                    },
+                    arrowKey: (dx, dy) => {
+                        face_rect[0] += dx;
+                        face_rect[1] += dy;
+                        data.renderer.setFace(face_rect);
+                        characterEditor.updateFace();
+                    },
+                });
+            }
+            else if (tmp.start(e, { x: face_rect[2], y: face_rect[3], w: face_rect[4], h: face_rect[5] })) {
+                const x = face_rect[2];
+                const y = face_rect[3];
+                tmp.setEventListener({
+                    mouseMove: (dx, dy) => {
+                        face_rect[2] = x + dx;
+                        face_rect[3] = y + dy;
+                        data.renderer.setFace(face_rect);
+                        characterEditor.updateFace();
+                    },
+                    arrowKey: (dx, dy) => {
+                        face_rect[2] += dx;
+                        face_rect[3] += dy;
+                        data.renderer.setFace(face_rect);
+                        characterEditor.updateFace();
+                    },
+                });
+            }
+            else if (example_rect && tmp.start(e, example_rect)) {
+                tmp.setEventListener({
+                    mouseMove: (dx, dy) => {
+                        data.renderer.setExample(example_rect.x + dx, example_rect.y + dy);
+                        characterEditor.updateBody();
+                    },
+                    arrowKey: (dx, dy) => {
+                        const rect = data.renderer.getExample();
+                        data.renderer.setExample(rect.x + dx, rect.y + dy);
+                        characterEditor.updateBody();
+                    },
+                });
+            }
+            else if (tmp.start(e, { x: body_rect[0], y: body_rect[1], w: body_rect[2], h: body_rect[3] })) {
+                const x = body_rect[0];
+                const y = body_rect[1];
+                tmp.setEventListener({
+                    mouseMove: (dx, dy) => {
+                        body_rect[0] = x + dx;
+                        body_rect[1] = y + dy;
+                        characterEditor.updateBody();
+                    },
+                    arrowKey: (dx, dy) => {
+                        body_rect[0] += dx;
+                        body_rect[1] += dy;
+                        characterEditor.updateBody();
+                    },
+                });
+            }
+            else {
+                let previewTop = parseInt(data.preview.style.top) | 0;
+                let previewLeft = parseInt(data.preview.style.left) | 0;
+                tmp.start(e, { x: 0, y: 0, w: CANVAS_SIZE, h: CANVAS_SIZE });
+                tmp.setEventListener({
+                    mouseMove(dx, dy) {
+                        previewTop += dy;
+                        previewLeft += dx;
+                        data.preview.style.top = previewTop + 'px';
+                        data.preview.style.left = previewLeft + 'px';
+                    },
+                    arrowKey(dx, dy) {
+                        console.log(previewTop, previewLeft, dx, dy);
+                        previewTop += dy;
+                        previewLeft += dx;
+                        data.preview.style.top = previewTop + 'px';
+                        data.preview.style.left = previewLeft + 'px';
+                    },
+                });
+            }
+
+            data.holdOrigin = tmp;
+        },
+
+        /**
+         * マウスハンドラ
+         */
+        onMouseMove(e) {
+            if (data.holdOrigin) {
+                data.holdOrigin.onMouseMove(e);
+            }
+        },
+
+        /**
+         * mouse up evemt
+         */
+        onMouseUp(e) {
+            switch (e.button) {
+            case MOUSE_BUTTON_PRIMARY:
+                if (data.holdOrigin) {
+                    data.holdOrigin.stop();
+                }
+                break;
+            case MOUSE_BUTTON_SECONDARY:
+                const scale = data.renderer.getScale();
+                data.renderer.setGuide(e.offsetX / scale | 0, e.offsetY / scale | 0);
+                data.renderer.update();
+                break;
+            }
+        },
+
+        /**
+         * mouse wheel event
+         */
+        onWheel(e) {
+            if (e.deltaY < 0) {
+                data.renderer.scaleUp();
+                e.preventDefault();
+            }
+            else if (0 < e.deltaY) {
+                data.renderer.scaleDown();
+                e.preventDefault();
+            }
+        },
+
+        /**
+         * paste event
+         */
+        onPaste(e) {
+            if (data.renderer && e instanceof ClipboardEvent) {
+                Nina.readAsImageFromClipboard(e).then((img) => {
+                    data.renderer.setExample(0, 0, img);
+                    data.renderer.update();
+                }).catch(printStack);
+            }
+        },
+
+        onKeyDown(e) {
+            switch (e.key) {
+            case "ArrowLeft":
+                if (data.holdOrigin) {
+                    data.holdOrigin.onArrowKey(-1, 0);
+                    e.preventDefault();
+                }
+                break;
+            case "ArrowRight":
+                if (data.holdOrigin) {
+                    data.holdOrigin.onArrowKey(1, 0);
+                    e.preventDefault();
+                }
+                break;
+            case "ArrowUp":
+                if (data.holdOrigin) {
+                    data.holdOrigin.onArrowKey(0, -1);
+                    e.preventDefault();
+                }
+                break;
+            case "ArrowDown":
+                if (data.holdOrigin) {
+                    data.holdOrigin.onArrowKey(0, 1);
+                    e.preventDefault();
+                }
+                break;
+            case "c":
+                if (data.characterIndex + 1 < data.characters.length) {
+                    data.onCharacterChanged(data.characterIndex + 1);
+                }
+                break;
+            case "C":
+                if (0 < data.characterIndex) {
+                    data.onCharacterChanged(data.characterIndex - 1);
+                }
+                break;
+            case "f":
+                if (data.faceIndex + 1 < data.faces.length) {
+                    data.onFaceChanged(data.faceIndex + 1);
+                }
+                break;
+            case "F":
+                if (0 < data.faceIndex) {
+                    data.onFaceChanged(data.faceIndex - 1);
+                }
+                break;
+            }
+        },
+
+        onDoubleClick() {
+            if (data.renderer.image) {
+                const currentCharacter = data.characters[data.characterIndex];
+                if (data.renderer.image.src) {
+                    saveURLAsFile(currentCharacter.name + '.png', data.renderer.image.src, 'image/png');
+                }
+                else {
+                    saveURLAsFile(currentCharacter.name + '.png', data.renderer.image.toDataURL(), 'image/png');
+                }
+            }
+        },
+
+        save() {
+            const currentCharacter = data.characters[data.characterIndex];
+            const json = {};
+            json[currentCharacter.id] = currentCharacter;
+    
+            const downLoadLink = document.createElement('a');
+            downLoadLink.download = currentCharacter.id + ".json";
+            downLoadLink.href = URL.createObjectURL(new Blob([  JSON.stringify(json, undefined, 2) ], {type: 'text/plain'}));
+            downLoadLink.dataset.downloadurl = ["text/plain", downLoadLink.download, downLoadLink.href].join(":");
+            downLoadLink.click();
+            setTimeout(function() {
+                URL.revokeObjectURL(downLoadLink.href);
+            }, 60000);
+        }
+    };
+    return data;
+}
+
+export default class CharacterEditor {
+    constructor(id, config) {
+        this.#adelite = new Adelite(id, template);
+        this.#config = config;
+        this.#data = createData(this);
     }
 
     show() {
-        this.#adelite.show(this).then(() => {
-            this.#renderer = new CharacterTestRenderer(this.#adelite.getElementById('character-texture-canvas'), this.#config);
-            this.onCharacterChanged(this.#characterIndex);
-        });
+        window.addEventListener('mouseup', this.#data.onMouseUp);
+        window.addEventListener('paste', this.#data.onPaste);
 
-        Promise.all(Array.from(this.#config.json.character, (x) => Filesystem.readJsonFile(x)))
-        .then((jsons) => {
-            this.#characters = [];
+        this.#adelite.show(this.#data).then(() => {
+            this.#data.preview = this.#adelite.getElementById('preview');
+            this.#data.renderer = new CharacterTestRenderer(this.#adelite.getElementById('character-texture-canvas'), this.#config);
+            return Promise.all(Array.from(this.#config.json.character, (x) => Filesystem.readJsonFile(x)));
+        }).then((jsons) => {
+            this.#data.characters = [];
             const characters = mergeObject(jsons);
             for (const key of Object.keys(characters)) {
-                this.#characters.push(characters[key]);
+                this.#data.characters.push(characters[key]);
             }
-            sortCharacter(this.#characters);
-            this.onCharacterChanged(this.#characterIndex);
+            sortCharacter(this.#data.characters);
+            this.#data.onCharacterChanged(this.#data.characterIndex);
         })
         .catch(printStack);
-
     }
 
     destroy() {
         this.#adelite.destroy();
-        this.#renderer = null;
-        this.#holdOrigin = null;
-    }
 
-    makeCharacterName(character) {
-        let name = character.name;
-
-        const noOrInitialBodyPosition = character.body_rect.length !== 4
-            || JSON.stringify(character.body_rect) == JSON.stringify(CharacterEditor.INITIAL_BODY_POSITION);
-
-        let remaining_faces = 0;
-        for (const face in character.face_rect) {
-            const noOrInitialFacePosition = character.face_rect[face].length !== 6 
-                || JSON.stringify(character.face_rect[face]) === JSON.stringify(CharacterEditor.INITIAL_FACE_POSITION);
-            remaining_faces += (noOrInitialFacePosition ? 1 : 0);
-        }
-
-        if (noOrInitialBodyPosition || remaining_faces) {
-            if (noOrInitialBodyPosition && remaining_faces) {
-                name = '[×] ' + name;
-            }
-            else {
-                name = '[△] ' + name;
-            }
-            name += '(';
-            name += '身体：' + (noOrInitialBodyPosition ? '未' : '完');
-            name += ', 表情：' + (remaining_faces ? '残' + remaining_faces : '完');
-            name += ')';
-        }
-        else if (!noOrInitialBodyPosition && !remaining_faces) {
-            name = '[〇] ' + name;
-        }
-
-        return name;  
-    }
-
-    onCharacterChanged(index) {
-        this.#characterIndex = index;
-        const currentCharacter = this.#characters[this.#characterIndex];
-        this.#renderer.setCharacter(currentCharacter.texture);
-        this.#faces = Object.keys(currentCharacter.face_rect);
-
-        const currentFace = this.#faces[this.#faceIndex];
-
-        if (currentCharacter.face_rect[currentFace].length == 0) { 
-            currentCharacter.face_rect[currentFace] = CharacterEditor.INITIAL_FACE_POSITION.slice();
-        }
-        this.updateFace();
-
-        if (currentCharacter.body_rect.length == 0) { 
-            currentCharacter.body_rect = CharacterEditor.INITIAL_BODY_POSITION.slice();
-        }
-        this.updateBody();
-    }
-
-    onFaceChanged(index) {
-        const currentCharacter = this.#characters[this.#characterIndex];
-        const oldValues = currentCharacter.face_rect[this.#faces[this.#faceIndex]].slice();
-
-        this.#faceIndex = index;
-        const currentFace = this.#faces[this.#faceIndex];
-
-        if (currentCharacter.face_rect[currentFace].length == 0) {
-            currentCharacter.face_rect[currentFace] = oldValues;
-        }
-        if (currentCharacter.face_rect[currentFace].length == 0) {
-            currentCharacter.face_rect[currentFace] = CharacterEditor.INITIAL_FACE_POSITION.slice();
-        }
-        this.updateFace();
-    }
-
-    ensureRect(rect, alt) {
-        const ret = [];
-        for (let i = 0; i < alt.length; ++i) {
-            ret.push((i < rect.length ? rect[i] : 0) || alt[i])
-        }
-        return ret;
-    }
-
-    updateFaceEdge(dx, dy, dw, dh) {
-        const currentCharacter = this.#characters[this.#characterIndex];
-        const currentFace = this.#faces[this.#faceIndex];
-        const face_rect = currentCharacter.face_rect[currentFace];
-
-        face_rect[0] += dx;
-        face_rect[1] += dy;
-        face_rect[2] += dx;
-        face_rect[3] += dy;
-        face_rect[4] += dw;
-        face_rect[5] += dh;
-
-        this.updateFace();
+        window.removeEventListener('mouseup', this.#data.onMouseUp);
+        window.removeEventListener('paste', this.#data.onPaste);
+        this.#data = null;
     }
 
     updateBody() {
-        this.#renderer.setBody(this.#characters[this.#characterIndex].body_rect);
+        this.#data.renderer.setBody(this.#data.characters[this.#data.characterIndex].body_rect);
         this.#adelite.update();
     }
 
     updateFace() {
-        const currentCharacter = this.#characters[this.#characterIndex];
-        const currentFace = this.#faces[this.#faceIndex];
+        const currentCharacter = this.#data.characters[this.#data.characterIndex];
+        const currentFace = this.#data.faces[this.#data.faceIndex];
 
-        this.#renderer.setFace(currentCharacter.face_rect[currentFace]);
+        this.#data.renderer.setFace(currentCharacter.face_rect[currentFace]);
         this.#adelite.update();
-    }
-
-    save() {
-        const currentCharacter = this.#characters[this.#characterIndex];
-        const json = {};
-        json[currentCharacter.id] = currentCharacter;
-
-        const downLoadLink = document.createElement('a');
-        downLoadLink.download = currentCharacter.id + ".json";
-        downLoadLink.href = URL.createObjectURL(new Blob([  JSON.stringify(json, undefined, 2) ], {type: 'text/plain'}));
-        downLoadLink.dataset.downloadurl = ["text/plain", downLoadLink.download, downLoadLink.href].join(":");
-        downLoadLink.click();
-        setTimeout(function() {
-            URL.revokeObjectURL(downLoadLink.href);
-        }, 60000);
-    }
-
-    /**
-     * mouse down event
-     * @param {MouseEvent} e 
-     */
-    onMouseDown(e) {
-        if (e.button != MOUSE_BUTTON_PRIMARY) {
-            return ;
-        }
-
-        const currentCharacter = this.#characters[this.#characterIndex];
-        const currentFace = this.#faces[this.#faceIndex];
-
-        const tmp = new HoldObject(this.#renderer);
-        const body_rect = currentCharacter.body_rect;
-        const face_rect = currentCharacter.face_rect[currentFace];
-        const example_rect = this.#renderer.getExample();
-
-        if (tmp.start(e, { x: face_rect[0], y: face_rect[1], w: face_rect[4], h: face_rect[5] })) {
-            const x = face_rect[0];
-            const y = face_rect[1];
-            tmp.setEventListener({
-                mouseMove: (dx, dy) => {
-                    face_rect[0] = x + dx;
-                    face_rect[1] = y + dy;
-                    this.#renderer.setFace(face_rect);
-                    this.updateFace();
-                },
-                arrowKey: (dx, dy) => {
-                    face_rect[0] += dx;
-                    face_rect[1] += dy;
-                    this.#renderer.setFace(face_rect);
-                    this.updateFace();
-                },
-            });
-        }
-        else if (tmp.start(e, { x: face_rect[2], y: face_rect[3], w: face_rect[4], h: face_rect[5] })) {
-            const x = face_rect[2];
-            const y = face_rect[3];
-            tmp.setEventListener({
-                mouseMove: (dx, dy) => {
-                    face_rect[2] = x + dx;
-                    face_rect[3] = y + dy;
-                    this.#renderer.setFace(face_rect);
-                    this.updateFace();
-                },
-                arrowKey: (dx, dy) => {
-                    face_rect[2] += dx;
-                    face_rect[3] += dy;
-                    this.#renderer.setFace(face_rect);
-                    this.updateFace();
-                },
-            });
-        }
-        else if (example_rect && tmp.start(e, example_rect)) {
-            tmp.setEventListener({
-                mouseMove: (dx, dy) => {
-                    this.#renderer.setExample(example_rect.x + dx, example_rect.y + dy);
-                    this.updateBody();
-                },
-                arrowKey: (dx, dy) => {
-                    const rect = this.#renderer.getExample();
-                    this.#renderer.setExample(rect.x + dx, rect.y + dy);
-                    this.updateBody();
-                },
-            });
-        }
-        else if (tmp.start(e, { x: body_rect[0], y: body_rect[1], w: body_rect[2], h: body_rect[3] })) {
-            const x = body_rect[0];
-            const y = body_rect[1];
-            tmp.setEventListener({
-                mouseMove: (dx, dy) => {
-                    body_rect[0] = x + dx;
-                    body_rect[1] = y + dy;
-                    this.updateBody();
-                },
-                arrowKey: (dx, dy) => {
-                    body_rect[0] += dx;
-                    body_rect[1] += dy;
-                    this.updateBody();
-                },
-            });
-        }
-        else {
-            const preview = this.#adelite.getElementById('preview');
-            let previewTop = parseInt(preview.style.top) | 0;
-            let previewLeft = parseInt(preview.style.left) | 0;
-            tmp.start(e, { x: 0, y: 0, w: 2048, h: 2048 });
-            tmp.setEventListener({
-                mouseMove(dx, dy) {
-                    previewTop += dy;
-                    previewLeft += dx;
-                    preview.style.top = previewTop + 'px';
-                    preview.style.left = previewLeft + 'px';
-                },
-                arrowKey(dx, dy) {
-                    console.log(previewTop, previewLeft, dx, dy);
-                    previewTop += dy;
-                    previewLeft += dx;
-                    preview.style.top = previewTop + 'px';
-                    preview.style.left = previewLeft + 'px';
-                },
-            });
-        }
-
-        this.#holdOrigin = tmp;
-    }
-
-    /**
-     * マウスハンドラ
-     * @param {MouseEvent} e
-     */
-    onMouseMove(e) {
-        if (this.#holdOrigin) {
-            this.#holdOrigin.onMouseMove(e);
-        }
-    }
-
-    /**
-     * mouse up evemt
-     * @param {MouseEvent} e 
-     */
-    onMouseUp(e) {
-        switch (e.button) {
-        case MOUSE_BUTTON_PRIMARY:
-            if (this.#holdOrigin) {
-                this.#holdOrigin.stop();
-            }
-            break;
-        case MOUSE_BUTTON_SECONDARY:
-            const scale = this.#renderer.getScale();
-            this.#renderer.setGuide(e.offsetX / scale | 0, e.offsetY / scale | 0);
-            this.#renderer.update();
-            break;
-        }
-    }
-
-    /**
-     * mouse wheel event
-     * @param {WheelEvent} e 
-     */
-    onWheel(e) {
-        if (e.deltaY < 0) {
-            this.#renderer.scaleUp();
-            e.preventDefault();
-        }
-        else if (0 < e.deltaY) {
-            this.#renderer.scaleDown();
-            e.preventDefault();
-        }
-    }
-
-    /**
-     * paste event
-     * @param {Event} e 
-     */
-    onPaste(e) {
-        if (this.#renderer && e instanceof ClipboardEvent) {
-            Nina.readAsImageFromClipboard(e).then((img) => {
-                this.#renderer.setExample(0, 0, img);
-                this.#renderer.update();
-            }).catch(printStack);
-        }
-    }
-
-    onKeyDown(e) {
-        switch (e.key) {
-        case "ArrowLeft":
-            if (this.#holdOrigin) {
-                this.#holdOrigin.onArrowKey(-1, 0);
-                e.preventDefault();
-            }
-            break;
-        case "ArrowRight":
-            if (this.#holdOrigin) {
-                this.#holdOrigin.onArrowKey(1, 0);
-                e.preventDefault();
-            }
-            break;
-        case "ArrowUp":
-            if (this.#holdOrigin) {
-                this.#holdOrigin.onArrowKey(0, -1);
-                e.preventDefault();
-            }
-            break;
-        case "ArrowDown":
-            if (this.#holdOrigin) {
-                this.#holdOrigin.onArrowKey(0, 1);
-                e.preventDefault();
-            }
-            break;
-        case "c":
-            if (this.#characterIndex + 1 < this.#characters.length) {
-                this.onCharacterChanged(this.#characterIndex + 1);
-            }
-            break;
-        case "C":
-            if (0 < this.#characterIndex) {
-                this.onCharacterChanged(this.#characterIndex - 1);
-            }
-            break;
-        case "f":
-            if (this.#faceIndex + 1 < this.#faces.length) {
-                this.onFaceChanged(this.#faceIndex + 1);
-            }
-            break;
-        case "F":
-            if (0 < this.#faceIndex) {
-                this.onFaceChanged(this.#faceIndex - 1);
-            }
-            break;
-        }
-    }
-
-    get renderer() {
-        return this.#renderer;
-    }
-
-    get faceDstPositions() {
-        return this.#faceDstPositions;
-    }
-
-    get faceSrcPositions() {
-        return this.#faceSrcPositions;
-    }
-
-    get bodyPositions() {
-        return this.#bodyPositions;
-    }
-
-    get characterIndex() {
-        return this.#characterIndex;
-    }
-
-    get faceIndex() {
-        return this.#faceIndex;
-    }
-
-    get characters() {
-        return this.#characters;
-    }
-
-    get faces() {
-        return this.#faces;
     }
 
     static INITIAL_FACE_POSITION = [0, 0, 100, 0, 100, 100];
     static INITIAL_BODY_POSITION = [200, 0, 100, 100];
-
-    #faceDstPositions = [
-        [ 'X:', 0, 50 ],
-        [ 'Y:', 1, 50 ]
-    ];
-
-    #faceSrcPositions = [
-        [ 'X:', 2, 50 ],
-        [ 'Y:', 3, 50 ],
-        [ 'W:', 4, 10 ],
-        [ 'H:', 5, 10 ]
-    ];
-
-    #bodyPositions = [
-        [ 'X:', 0, 50 ],
-        [ 'Y:', 1, 50 ],
-        [ 'W:', 2, 50 ],
-        [ 'H:', 3, 50 ]
-    ];
-
-    /** @type {CharacterTestRenderer} */
-    #renderer = null;
 
     /** @type {Adelite} */
     #adelite = null;
@@ -737,17 +751,8 @@ export default class CharacterEditor {
     /** @type {Object} */
     #config = null;
 
-    /** @type {CharacterJson[]} */
-    #characters = [];
-
-    /** @type {string[]} */
-    #faces = [];
-
-    #characterIndex = 0;
-    #faceIndex = 0;
-
-    /** @type {HoldObject} */
-    #holdOrigin = null;
+    /** @type {Data} */
+    #data = null;
 }
 
 /**
@@ -764,8 +769,8 @@ class CharacterTestRenderer {
         this.#canvas = canvas;
         this.#ctx = canvas.getContext('2d');
         this.#example = {
-            x: null,
-            y: null,
+            x: 0,
+            y: 0,
             image: null,
         }
         this.#image = new Image();
@@ -808,24 +813,24 @@ class CharacterTestRenderer {
     }
 
     drawGrid(interval, color) {
-            this.#ctx.beginPath();
-            for (let x = 0; x < this.#canvas.width; x += interval) {
-                this.#ctx.moveTo(x, 0);
-                this.#ctx.lineTo(x, this.#canvas.height);
-            }
-            for (let y = 0; y < this.#canvas.height; y += interval) {
-                this.#ctx.moveTo(0, y);
-                this.#ctx.lineTo(this.#canvas.width, y);
-            }
-            this.#ctx.closePath();
-            this.#ctx.lineWidth = 3;
-            this.#ctx.strokeStyle = color;
-            this.#ctx.stroke();
+        this.#ctx.beginPath();
+        for (let x = 0; x < CANVAS_SIZE; x += interval) {
+            this.#ctx.moveTo(x, 0);
+            this.#ctx.lineTo(x, CANVAS_SIZE);
+        }
+        for (let y = 0; y < CANVAS_SIZE; y += interval) {
+            this.#ctx.moveTo(0, y);
+            this.#ctx.lineTo(CANVAS_SIZE, y);
+        }
+        this.#ctx.closePath();
+        this.#ctx.lineWidth = 3;
+        this.#ctx.strokeStyle = color;
+        this.#ctx.stroke();
     }
 
     update() {
         if (this.#image) {
-            const size = 2048 * this.#scale | 0;
+            const size = CANVAS_SIZE * this.#scale | 0;
             if (this.#canvas.width != size) {
                 this.#canvas.width = size;
             }
@@ -875,6 +880,8 @@ class CharacterTestRenderer {
                     this.#ctx.globalAlpha = 0.5;
                     this.#ctx.drawImage(this.#example.image, this.#example.x, this.#example.y);
                     this.#ctx.restore();
+
+                    this.drawRect(this.getExample(), 'rgb(0, 0, 0)');
                 }
 
                 if (this.#guide) {
@@ -900,7 +907,7 @@ class CharacterTestRenderer {
 
             this.#ctx.resetTransform();
         }
-    };
+    }
 
     setCharacter(path) {
         if (this.#path == path) {
@@ -938,7 +945,7 @@ class CharacterTestRenderer {
             }
             this.update();
         }
-    };
+    }
 
     setBody(rect) {
         if (rect.length == 4) {
@@ -950,32 +957,32 @@ class CharacterTestRenderer {
             };
             this.update();
         }
-    };
+    }
 
     setFaceOriented(face_oriented) {
         this.#face_oriented = face_oriented;
         this.update();
-    };
+    }
 
     getScale() {
         return this.#scale;
-    };
+    }
 
     scaleUp() {
         this.#scale += (Math.max(10, this.#scale * 10) | 0) / 100.0;
         this.#scale = Math.min(this.#scale, 4.0);
         this.update();
-    };
+    }
 
     scaleDown() {
         this.#scale = (Math.max(10, this.#scale * 90) | 0) / 100.0;
         this.update();
-    };
+    }
 
     scaleReset() {
         this.#scale = 1.0;
         this.update();
-    };
+    }
 
     setGuide(x, y) {
         if (this.#face_rect) {
@@ -984,9 +991,9 @@ class CharacterTestRenderer {
                 y: y - this.#face_rect.dsty
             };
         }
-    };
+    }
 
-    getExample(x, y, image) {
+    getExample() {
         if (this.#example.image) {
             return {
                 x: this.#example.x,
@@ -996,14 +1003,22 @@ class CharacterTestRenderer {
             };
         }
         return null;
-    };
+    }
 
     setExample(x, y, image) {
-        this.#example.x = x;
-        this.#example.y = y;
-        if (image) {
-            this.#example.image = image;
+        if (x) { 
+            this.#example.x = x;
         }
+        if (y) { 
+            this.#example.y = y;
+        }
+        if (image) {
+            this.#example.image = image; 
+        }
+    }
+
+    get image() {
+        return this.#image;
     }
 
     #config = null;
