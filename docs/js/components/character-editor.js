@@ -253,7 +253,7 @@ const template = {
         "button": {
             "once:class": "mt-q2",
             "once:textContent": "保存",
-            "on:click": "{{ save() }}"
+            "on:click": "{{ onSaveClicked() }}"
         }
     },
     "div#preview": {
@@ -297,12 +297,13 @@ const template = {
  *     onFaceChanged: function(number): void,
  *     onMouseDown: function(MouseEvent): void,
  *     onMouseMove: function(MouseEvent): void,
- *     onMouseUp: function(MouseEvent): void,
  *     onWheel: function(WheelEvent): void,
- *     onPaste: function(Event): void,
  *     onKeyDown: function(KeyboardEvent): void,
  *     onDoubleClick: function(): void,
- *     save: function(): void,
+ *     onSaveClicked: function(): void,
+ *     onWindowMouseUp: function(MouseEvent): void,
+ *     onWindowPaste: function(Event): void,
+ *     onWindowDoubleClick: function(): void,
  * }} Data
  */
 
@@ -570,24 +571,6 @@ function createData(characterEditor) {
         },
 
         /**
-         * mouse up evemt
-         */
-        onMouseUp(e) {
-            switch (e.button) {
-            case MOUSE_BUTTON_PRIMARY:
-                if (data.holdOrigin) {
-                    data.holdOrigin.stop();
-                }
-                break;
-            case MOUSE_BUTTON_SECONDARY:
-                const scale = data.renderer.getScale();
-                data.renderer.setGuide(e.offsetX / scale | 0, e.offsetY / scale | 0);
-                data.renderer.update();
-                break;
-            }
-        },
-
-        /**
          * mouse wheel event
          */
         onWheel(e) {
@@ -598,18 +581,6 @@ function createData(characterEditor) {
             else if (0 < e.deltaY) {
                 data.renderer.scaleDown();
                 e.preventDefault();
-            }
-        },
-
-        /**
-         * paste event
-         */
-        onPaste(e) {
-            if (data.renderer && e instanceof ClipboardEvent) {
-                Nina.readAsImageFromClipboard(e).then((img) => {
-                    data.renderer.setExample(0, 0, img);
-                    data.renderer.update();
-                }).catch(printStack);
             }
         },
 
@@ -674,7 +645,7 @@ function createData(characterEditor) {
             }
         },
 
-        save() {
+        onSaveClicked() {
             const currentCharacter = data.characters[data.characterIndex];
             const json = {};
             json[currentCharacter.id] = currentCharacter;
@@ -686,6 +657,41 @@ function createData(characterEditor) {
                 }
             });
             fr.readAsDataURL(new Blob([  JSON.stringify(json, undefined, 2) ]));
+        },
+
+        /**
+         * mouse up evemt
+         */
+        onWindowMouseUp(e) {
+            switch (e.button) {
+            case MOUSE_BUTTON_PRIMARY:
+                if (data.holdOrigin) {
+                    data.holdOrigin.stop();
+                }
+                break;
+            case MOUSE_BUTTON_SECONDARY:
+                const scale = data.renderer.getScale();
+                data.renderer.setGuide(e.offsetX / scale | 0, e.offsetY / scale | 0);
+                data.renderer.update();
+                break;
+            }
+        },
+
+        /**
+         * paste event
+         */
+        onWindowPaste(e) {
+            if (data.renderer && e instanceof ClipboardEvent) {
+                Nina.readAsImageFromClipboard(e).then((img) => {
+                    data.renderer.setExample(0, 0, img);
+                    data.renderer.update();
+                }).catch(printStack);
+            }
+        },
+
+        onWindowDoubleClick() {
+            data.preview.style.top = '0px';
+            data.preview.style.left = '0px';
         }
     };
     return data;
@@ -699,8 +705,9 @@ export default class CharacterEditor {
     }
 
     show() {
-        window.addEventListener('mouseup', this.#data.onMouseUp);
-        window.addEventListener('paste', this.#data.onPaste);
+        window.addEventListener('mouseup', this.#data.onWindowMouseUp);
+        window.addEventListener('paste', this.#data.onWindowPaste);
+        window.addEventListener('dblclick', this.#data.onWindowDoubleClick);
 
         this.#adelite.show(this.#data).then(() => {
             this.#data.preview = this.#adelite.getElementById('preview');
@@ -721,8 +728,9 @@ export default class CharacterEditor {
     destroy() {
         this.#adelite.destroy();
 
-        window.removeEventListener('mouseup', this.#data.onMouseUp);
-        window.removeEventListener('paste', this.#data.onPaste);
+        window.removeEventListener('mouseup', this.#data.onWindowMouseUp);
+        window.removeEventListener('paste', this.#data.onWindowPaste);
+        window.removeEventListener('dblclick', this.#data.onWindowDoubleClick);
         this.#data = null;
     }
 
