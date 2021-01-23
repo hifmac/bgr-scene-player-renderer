@@ -14,7 +14,8 @@ import {
     MOUSE_BUTTON_PRIMARY,
     MOUSE_BUTTON_SECONDARY,
     sortCharacter,
-    saveURLAsFile
+    saveURLAsFile,
+    MOUSE_BUTTON_WHEEL
 } from '../blanc/lisette.js';
 import * as Nina from '../valmir/nina.js';
 import Adelite from '../sandica/adelite.js';
@@ -462,8 +463,7 @@ function createData(characterEditor) {
          * mouse down event
          */
         onMouseDown(e) {
-            console.log(e)
-            if (e.button != MOUSE_BUTTON_PRIMARY) {
+            if (e.button !== MOUSE_BUTTON_PRIMARY) {
                 return ;
             }
 
@@ -473,92 +473,77 @@ function createData(characterEditor) {
             const tmp = new HoldObject(data.renderer);
             const body_rect = currentCharacter.body_rect;
             const face_rect = currentCharacter.face_rect[currentFace];
-            const example_rect = data.renderer.getExample();
 
-            if (tmp.start(e, { x: face_rect[0], y: face_rect[1], w: face_rect[4], h: face_rect[5] })) {
-                const x = face_rect[0];
-                const y = face_rect[1];
-                tmp.setEventListener({
-                    mouseMove: (dx, dy) => {
-                        face_rect[0] = x + dx / data.renderer.getScale() | 0;
-                        face_rect[1] = y + dy / data.renderer.getScale() | 0;
-                        data.renderer.setFace(face_rect);
+            const makeFaceHandler = (x, y, w, h) => {
+                return {
+                    rect: { x: face_rect[x], y: face_rect[y], w: face_rect[w], h: face_rect[h] },
+                    mouseMove(dx, dy) {
+                        face_rect[x] = this.rect.x + dx / data.renderer.getScale() | 0;
+                        face_rect[y] = this.rect.y + dy / data.renderer.getScale() | 0;
+                        data.renderer.setFace(currentCharacter.face_rect, data.faces[data.faceIndex]);
                         characterEditor.updateFace();
                     },
                     arrowKey: (dx, dy) => {
-                        face_rect[0] += dx;
-                        face_rect[1] += dy;
-                        data.renderer.setFace(face_rect);
+                        face_rect[x] += dx;
+                        face_rect[y] += dy;
+                        data.renderer.setFace(currentCharacter.face_rect, data.faces[data.faceIndex]);
                         characterEditor.updateFace();
-                    },
-                });
-            }
-            else if (tmp.start(e, { x: face_rect[2], y: face_rect[3], w: face_rect[4], h: face_rect[5] })) {
-                const x = face_rect[2];
-                const y = face_rect[3];
-                tmp.setEventListener({
-                    mouseMove: (dx, dy) => {
-                        face_rect[2] = x + dx / data.renderer.getScale() | 0;
-                        face_rect[3] = y + dy / data.renderer.getScale() | 0;
-                        data.renderer.setFace(face_rect);
-                        characterEditor.updateFace();
-                    },
-                    arrowKey: (dx, dy) => {
-                        face_rect[2] += dx;
-                        face_rect[3] += dy;
-                        data.renderer.setFace(face_rect);
-                        characterEditor.updateFace();
-                    },
-                });
-            }
-            else if (example_rect && tmp.start(e, example_rect)) {
-                tmp.setEventListener({
-                    mouseMove: (dx, dy) => {
+                    }
+                }
+            };
+    
+            const handlers = [
+                makeFaceHandler(0, 1, 4, 5),
+                makeFaceHandler(2, 3, 4, 5),
+                {
+                    rect: data.renderer.getExample(),
+                    mouseMove(dx, dy) {
                         data.renderer.setExample(
-                            example_rect.x + dx / data.renderer.getScale() | 0,
-                            example_rect.y + dy / data.renderer.getScale() | 0);
+                            this.rect.x + dx / data.renderer.getScale() | 0,
+                            this.rect.y + dy / data.renderer.getScale() | 0);
                         characterEditor.updateBody();
                     },
-                    arrowKey: (dx, dy) => {
+                    arrowKey(dx, dy) {
                         const rect = data.renderer.getExample();
                         data.renderer.setExample(rect.x + dx, rect.y + dy);
                         characterEditor.updateBody();
-                    },
-                });
-            }
-            else if (tmp.start(e, { x: body_rect[0], y: body_rect[1], w: body_rect[2], h: body_rect[3] })) {
-                const x = body_rect[0];
-                const y = body_rect[1];
-                tmp.setEventListener({
-                    mouseMove: (dx, dy) => {
-                        body_rect[0] = x + dx / data.renderer.getScale() | 0;
-                        body_rect[1] = y + dy / data.renderer.getScale() | 0;
+                    }
+                },
+                {
+                    rect: { x: body_rect[0], y: body_rect[1], w: body_rect[2], h: body_rect[3] },
+                    mouseMove(dx, dy) {
+                        body_rect[0] = this.rect.x + dx / data.renderer.getScale() | 0;
+                        body_rect[1] = this.rect.y + dy / data.renderer.getScale() | 0;
                         characterEditor.updateBody();
                     },
-                    arrowKey: (dx, dy) => {
+                    arrowKey(dx, dy) {
                         body_rect[0] += dx;
                         body_rect[1] += dy;
                         characterEditor.updateBody();
-                    },
-                });
-            }
-            else {
-                const previewTop = parseInt(data.preview.style.top) | 0;
-                const previewLeft = parseInt(data.preview.style.left) | 0;
-                tmp.start(e, { x: 0, y: 0, w: CANVAS_SIZE, h: CANVAS_SIZE });
-                tmp.setEventListener({
+                    }
+                },
+                {
+                    previewTop: parseInt(data.preview.style.top) | 0,
+                    previewLeft: parseInt(data.preview.style.left) | 0,
+                    rect: { x: 0, y: 0, w: CANVAS_SIZE, h: CANVAS_SIZE },
                     mouseMove(dx, dy) {
-                        data.preview.style.top = previewTop + dy  + 'px';
-                        data.preview.style.left = previewLeft + dx + 'px';
+                        data.preview.style.top = this.previewTop + dy  + 'px';
+                        data.preview.style.left = this.previewLeft + dx + 'px';
                     },
                     arrowKey(dx, dy) {
                         data.preview.style.top = parseInt(data.preview.style.top) + dy + 'px';
                         data.preview.style.left = parseInt(data.preview.style.left) + dx + 'px';
-                    },
-                });
-            }
+                    }
+                }
+            ];
 
-            data.holdOrigin = tmp;
+            for (const handler of handlers) {
+                if (handler.rect && tmp.start(e, handler.rect)) {
+                    tmp.setEventListener(handler);
+                    data.holdOrigin = tmp;
+                    break;
+                }
+            }
         },
 
         /**
@@ -636,11 +621,13 @@ function createData(characterEditor) {
         onDoubleClick() {
             if (data.renderer.image) {
                 const currentCharacter = data.characters[data.characterIndex];
-                if (data.renderer.image.src) {
-                    saveURLAsFile(currentCharacter.name + '.png', data.renderer.image.src, 'image/png');
+                const filename = currentCharacter.name + '.png';
+                const type = 'image/png';
+                if (data.renderer.image instanceof HTMLImageElement) {
+                    saveURLAsFile(filename, data.renderer.image.src, type);
                 }
                 else {
-                    saveURLAsFile(currentCharacter.name + '.png', data.renderer.image.toDataURL(), 'image/png');
+                    saveURLAsFile(filename, data.renderer.image.toDataURL(), type);
                 }
             }
         },
@@ -671,7 +658,7 @@ function createData(characterEditor) {
                 break;
             case MOUSE_BUTTON_SECONDARY:
                 const scale = data.renderer.getScale();
-                data.renderer.setGuide(e.offsetX / scale | 0, e.offsetY / scale | 0);
+                data.renderer.addGuide(e.offsetX / scale | 0, e.offsetY / scale | 0);
                 data.renderer.update();
                 break;
             }
@@ -743,7 +730,7 @@ export default class CharacterEditor {
         const currentCharacter = this.#data.characters[this.#data.characterIndex];
         const currentFace = this.#data.faces[this.#data.faceIndex];
 
-        this.#data.renderer.setFace(currentCharacter.face_rect[currentFace]);
+        this.#data.renderer.setFace(currentCharacter.face_rect, currentFace);
         this.#adelite.update();
     }
 
@@ -761,9 +748,33 @@ export default class CharacterEditor {
 }
 
 /**
+ * @typedef {{
+ *     x: number,
+ *     y: number,
+ *     w: number,
+ *     h: number,
+ * }} BodyRect
+ * @typedef {{
+ *     dstx: number,
+ *     dsty: number,
+ *     srcx: number,
+ *     srcy: number,
+ *     w: number,
+ *     h: number,
+ * }} FaceRect
+ */
+
+/**
  * CharacterTestRenderer
  */
 class CharacterTestRenderer {
+    DST_RECT_COLOR = 'rgb(255, 0, 0)';
+    SRC_RECT_COLOR = 'rgb(0, 0, 255)';
+    SRC_RECT_INACTIVE_COLOR = 'rgb(255, 255, 0)';
+    EXAMPLE_FRAME_COLOR = 'rgb(0, 0, 0)';
+    GUIDE_COLOR = 'rgb(255, 0, 255)';
+    BODY_RECT_COLOR = 'rgb(0, 255, 0)';
+
     /**
      * 
      * @param {HTMLCanvasElement} canvas 
@@ -778,8 +789,6 @@ class CharacterTestRenderer {
             y: 0,
             image: null,
         }
-        this.#image = new Image();
-        this.#image.addEventListener('load', () => this.update());
     }
 
     drawDot(rect, color, size=2) {
@@ -834,6 +843,14 @@ class CharacterTestRenderer {
     }
 
     update() {
+        if (!this.#animated) {
+            this.#animated = true;
+            requestAnimationFrame(() => this.animationFrame());
+        }
+    }
+
+    animationFrame() {
+        this.#animated = false;
         if (this.#image) {
             const size = CANVAS_SIZE * this.#scale | 0;
             if (this.#canvas.width != size) {
@@ -852,32 +869,46 @@ class CharacterTestRenderer {
 
             this.#ctx.drawImage(this.#image, 0, 0);
 
-            if (this.#face_rect) {
-                this.#ctx.drawImage(this.#image,
-                    this.#face_rect['srcx'], this.#face_rect['srcy'], this.#face_rect['w'], this.#face_rect['h'],
-                    this.#face_rect['dstx'], this.#face_rect['dsty'], this.#face_rect['w'], this.#face_rect['h']);
+            if (this.#faceRects) {
+                for (let i = 0; i < this.#faceRects.length; ++i) {
+                    const faceRect = this.#faceRects[i];
 
-                const src_rect = {
-                    x: this.#face_rect['srcx'],
-                    y: this.#face_rect['srcy'],
-                    w: this.#face_rect['w'],
-                    h: this.#face_rect['h']
-                };
+                    const src_rect = {
+                        x: faceRect['srcx'],
+                        y: faceRect['srcy'],
+                        w: faceRect['w'],
+                        h: faceRect['h']
+                    };
 
-                const dst_rect = {
-                    x: this.#face_rect['dstx'],
-                    y: this.#face_rect['dsty'],
-                    w: this.#face_rect['w'],
-                    h: this.#face_rect['h']
-                };
+                    const dst_rect = {
+                        x: faceRect['dstx'],
+                        y: faceRect['dsty'],
+                        w: faceRect['w'],
+                        h: faceRect['h']
+                    };
 
-                if (this.#face_oriented) {
-                    this.drawDot(dst_rect, 'rgb(255, 0, 0)');
-                    this.drawDot(src_rect, 'rgb(0, 0, 255)');
-                }
-                else {
-                    this.drawRect(dst_rect, 'rgb(255, 0, 0)');
-                    this.drawRect(src_rect, 'rgb(0, 0, 255)');
+                    if (i == this.#faceActive) {
+                        this.#ctx.drawImage(this.#image,
+                            faceRect['srcx'], faceRect['srcy'], faceRect['w'], faceRect['h'],
+                            faceRect['dstx'], faceRect['dsty'], faceRect['w'], faceRect['h']);
+
+                        if (this.#faceOriented) {
+                            this.drawDot(dst_rect, this.DST_RECT_COLOR);
+                            this.drawDot(src_rect, this.SRC_RECT_COLOR);
+                        }
+                        else {
+                            this.drawRect(dst_rect, this.DST_RECT_COLOR);
+                            this.drawRect(src_rect, this.SRC_RECT_COLOR);
+                        }                            
+                    }
+                    else {
+                        if (this.#faceOriented) {
+                            this.drawDot(src_rect, this.SRC_RECT_INACTIVE_COLOR);
+                        }
+                        else {
+                            this.drawRect(src_rect, this.SRC_RECT_INACTIVE_COLOR);
+                        }                            
+                    }
                 }
 
                 if (this.#example.image) {
@@ -886,28 +917,21 @@ class CharacterTestRenderer {
                     this.#ctx.drawImage(this.#example.image, this.#example.x, this.#example.y);
                     this.#ctx.restore();
 
-                    this.drawRect(this.getExample(), 'rgb(0, 0, 0)');
+                    this.drawRect(this.getExample(), this.EXAMPLE_FRAME_COLOR);
                 }
 
-                if (this.#guide) {
+                for (const guide of this.#guide) {
                     this.drawDot({
-                        x: this.#face_rect.srcx + this.#guide.x,
-                        y: this.#face_rect.srcy + this.#guide.y,
+                        x: guide.x,
+                        y: guide.y,
                         w: 0,
-                        h: 0
-                    }, 'rgb(255, 0, 255)');
-
-                    this.drawDot({
-                        x: this.#face_rect.dstx + this.#guide.x,
-                        y: this.#face_rect.dsty + this.#guide.y,
-                        w: 0,
-                        h: 0
-                    }, 'rgb(255, 0, 255)');
+                        h: 0,
+                    }, this.GUIDE_COLOR);
                 }
             }
 
-            if (this.#body_rect) {
-                this.drawRect(this.#body_rect, 'rgb(0, 255, 0)');
+            if (this.#bodyRect) {
+                this.drawRect(this.#bodyRect, this.BODY_RECT_COLOR);
             }
 
             this.#ctx.resetTransform();
@@ -920,41 +944,44 @@ class CharacterTestRenderer {
         }
         else {
             this.#path = path;
-            Nina.readAsImage(this.#config.data.texture.character + '/' + path)
-                .then((img) => { 
-                    this.#image = img;
-                    this.update();
-                })
-                .catch(printStack);
+            this.#guide = [];
+            Nina.readAsImage(this.#config.data.texture.character + '/' + path).then((img) => { 
+                this.#image = img;
+                this.update();
+            }).catch(printStack);
         }
-    };
+    }
 
-    setFace(rect, keep_guide=false) {
-        if (rect.length == 6) {
-            const old_face = this.#face_rect;
-            this.#face_rect = {
-                dstx: rect[0],
-                dsty: rect[1],
-                srcx: rect[2],
-                srcy: rect[3],
-                w: rect[4],
-                h: rect[5],
-            };
-            if (this.#guide && old_face) {
-                if (keep_guide || this.#face_rect.w != old_face.w) {
-                    this.#guide.x = (old_face.dstx + this.#guide.x) - this.#face_rect.dstx;
+    /**
+     * 
+     * @param {Object.<string, number[]>} rects 
+     * @param {string} currentFace 
+     */
+    setFace(rects, currentFace) {
+        this.#faceRects = [];
+        for (const face in rects) {
+            if (rects[face].length == 6) {
+                const rect = {
+                    dstx: rects[face][0],
+                    dsty: rects[face][1],
+                    srcx: rects[face][2],
+                    srcy: rects[face][3],
+                    w: rects[face][4],
+                    h: rects[face][5],
+
+                };
+                if (face === currentFace) {
+                    this.#faceActive = this.#faceRects.length;
                 }
-                if (keep_guide || this.#face_rect.h != old_face.h) {
-                    this.#guide.y = (old_face.dsty + this.#guide.y) - this.#face_rect.dsty;
-                }
+                this.#faceRects.push(rect);
             }
-            this.update();
         }
+        this.update();
     }
 
     setBody(rect) {
         if (rect.length == 4) {
-            this.#body_rect = {
+            this.#bodyRect = {
                 x: rect[0],
                 y: rect[1],
                 w: rect[2],
@@ -965,7 +992,7 @@ class CharacterTestRenderer {
     }
 
     setFaceOriented(face_oriented) {
-        this.#face_oriented = face_oriented;
+        this.#faceOriented = face_oriented;
         this.update();
     }
 
@@ -989,15 +1016,13 @@ class CharacterTestRenderer {
         this.update();
     }
 
-    setGuide(x, y) {
-        if (this.#face_rect) {
-            this.#guide = {
-                x: x - this.#face_rect.dstx,
-                y: y - this.#face_rect.dsty
-            };
-        }
+    addGuide(x, y) {
+        this.#guide.push({ x, y });
     }
 
+    /**
+     * @returns {BodyRect}
+     */
     getExample() {
         if (this.#example.image) {
             return {
@@ -1030,12 +1055,33 @@ class CharacterTestRenderer {
     #canvas = null;
     #ctx = null;
     #path = null;
+    #animated = false;
+
+    /** @type {Nina.DrawableElement} */
     #image = null;
-    #face_rect = null;
-    #body_rect = null;
+
+    #faceActive = 0;
+
+    /** @type {FaceRect[]} */
+    #faceRects = null;
+
+    /** @type {BodyRect} */
+    #bodyRect = null;
+
+    /** @type {{ x: number, y: number }[]} */
     #guide = null;
+
+    /**
+     * @type {{
+     *     x: number,
+     *     y: number,
+     *     image: Nina.DrawableElement
+     * }}
+     */
     #example = null;
-    #face_oriented = false;
+
+    #faceOriented = false;
+
     #scale = 1.0;
 }
 
