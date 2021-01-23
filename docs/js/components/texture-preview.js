@@ -7,7 +7,7 @@
  */
 'use strict';
 
-import { Filesystem, printStack } from '../blanc/lisette.js';
+import { Filesystem, printStack, saveURLAsFile } from '../blanc/lisette.js';
 import * as Nina from '../valmir/nina.js';
 import Adelite from '../sandica/adelite.js';
 
@@ -90,11 +90,7 @@ export default class TexturePreview {
              */
             onDoubleClick: () => {
                 if (data.src) {
-                    const downLoadLink = document.createElement('a');
-                    downLoadLink.download = data.textures[data.selectedIndex] + '.png';
-                    downLoadLink.href = data.src;
-                    downLoadLink.dataset.downloadurl = ["image/png", downLoadLink.download, downLoadLink.href].join(":");
-                    downLoadLink.click();
+                    saveURLAsFile(data.textures[data.selectedIndex] + '.png', data.src, 'image/png');
                 }
             }
         };
