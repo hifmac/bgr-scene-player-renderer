@@ -359,17 +359,17 @@ function estimatePosition(sample, texture, rect) {
         { dx:  0, dy:  1 },
         { dx: -1, dy:  0 },
         { dx:  0, dy: -1 },
-        { dx:  2, dy:  0 },
-        { dx:  0, dy:  2 },
-        { dx: -2, dy:  0 },
-        { dx:  0, dy: -2 },
+        { dx:  1, dy:  1 },
+        { dx:  1, dy: -1 },
+        { dx: -1, dy:  1 },
+        { dx:  1, dy: -1 },
     ];
 
     /*
      * search best estimated position
      */
     const prev = best.pos;
-    for (let i = 0; i < 32; ++i) {
+    for (let i = 0; i < 64; ++i) {
         let localBest = null;
         for (const next of nexts) {
             const pos = {
@@ -419,13 +419,12 @@ function adjustRect(texture, rect) {
      */
     const isNull = (line) => {
         const imageData = Nina.getImageData(texture, line);
+        let count = 0;
         for (let i = imageData.data.byteLength ; i;) {
             i -= 4;
-            if (3 <= imageData.data[i + 3]) {
-                return false;
-            }
+            count += imageData.data[i + 3];
         }
-        return true;
+        return count < 32;
     }
 
     let extendPhase = true;
