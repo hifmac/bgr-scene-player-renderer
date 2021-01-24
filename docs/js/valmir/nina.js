@@ -14,6 +14,15 @@ import * as Viola from './viola.js';
  * @typedef {HTMLCanvasElement | HTMLImageElement} DrawableElement 
  */
 
+/**
+ * @typedef {{
+ *     x: number,
+ *     y: number,
+ *     w: number,
+ *     h: number,
+ * }} Rect
+ */
+
 const PNG_HEADER =  [ 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A ];
 const CACHE_QUOTA = 64 << 20;
 
@@ -152,14 +161,28 @@ const isPngFile = (data) => {
 };
 
 /**
+ * 
+ * @param {DrawableElement} img 
+ * @param {Rect} rect 
+ */
+const imageToCanvas = (img, rect) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = rect.w;
+    canvas.height = rect.h;
+    const context = canvas.getContext('2d');
+    context.globalCompositeOperation = 'copy';
+    context.drawImage(img,
+        rect.x, rect.y, rect.w, rect.h,
+        0, 0, rect.w, rect.h);
+    return canvas;
+};
+
+/**
  * convert png data to data url string
  * @param {Uint8Array} data 
  * @returns {Promise<string>}
  */
 function pngDataToDataURL(data) {
-    /*
-     * read PNG file and convert to Data URL to cache
-     */
     return new Promise((resolve, reject) => {
         const fileReader = new FileReader() ;
         fileReader.addEventListener('load', () => {
@@ -271,19 +294,18 @@ export function readAsImage(path) {
  */
 export function readAsImageFromClipboard(event) {
     return new Promise((resolve, reject) => {
-        const fr = new FileReader();
-        fr.addEventListener('load', (e) => {
-            if (typeof e.target.result === 'string') {
-                const img = new Image;
-                img.src = e.target.result;
-                img.addEventListener('load', () => resolve(img));
-            }
-            else {
-                rejectError(`Invalid result type: ${typeof e.target.result}`, reject);
-            }
-        });
-
         if (event.clipboardData.items.length) {
+            const fr = new FileReader();
+            fr.addEventListener('load', (e) => {
+                if (typeof e.target.result === 'string') {
+                    const img = new Image;
+                    img.src = e.target.result;
+                    img.addEventListener('load', () => resolve(img));
+                }
+                else {
+                    rejectError(`Invalid result type: ${typeof e.target.result}`, reject);
+                }
+            });    
             fr.readAsDataURL(event.clipboardData.items[0].getAsFile());    
         }
         else {
@@ -293,6 +315,7 @@ export function readAsImageFromClipboard(event) {
 }
     
 /**
+ * make mask image for character shadow
  * @param {DrawableElement} img file path to read
  * @returns {Promise<DrawableElement>}
  */
@@ -311,24 +334,29 @@ export function makeMaskImage(img) {
 }
 
 /**
+ * 
  * @param {DrawableElement} img file path to read
- * @param {{
- *     x: number,
- *     y: number,
- *     w: number,
- *     h: number,
- * }} rect
+ * @param {Rect} rect
  * @returns {Promise<DrawableElement>}
  */
 export function clipImage(img, rect) {
     return new Promise((resolve) => {
-        const canvas = document.createElement('canvas');
-        canvas.width = rect.w;
-        canvas.height = rect.h;
-        const context = canvas.getContext('2d');
-        context.drawImage(img,
-            rect.x, rect.y, rect.w, rect.h,
-            0, 0, rect.w, rect.h);
-        resolve(canvas);
+        resolve(imageToCanvas(img, rect));
     });
+}
+
+/**
+ * @param {DrawableElement} image 
+ * @param {Rect} rect 
+ */
+export function getImageData(image, rect) {
+    if (image instanceof HTMLCanvasElement) {
+        return image.getContext('2d')
+            .getImageData(rect.x, rect.y, rect.w, rect.h);
+    }
+    else {
+        return imageToCanvas(image, rect)
+            .getContext('2d')
+            .getImageData(0, 0, rect.w, rect.h);
+    }
 }

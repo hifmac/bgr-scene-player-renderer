@@ -229,6 +229,16 @@ const template = {
             "label": {
                 "once:textContent": "全身",
             },
+            "div.ml-q2": {
+                "label": {
+                    "once:textContent": "固定："
+                },
+                "input": {
+                    "once:type": "checkbox",
+                    "bind:value": "{{ isBodyRectFixed }}",
+                    "on:change": "{{ fixBodyRect(getAttribute('checked')) }}",
+                },
+            },
             "div.body-position ml-q2": {
                 "forEach:src": "{{ bodyPositions }}",
                 "label": {
@@ -251,10 +261,30 @@ const template = {
                 }
             }
         },
-        "button": {
+        "div": {
             "once:class": "mt-q2",
-            "once:textContent": "保存",
-            "on:click": "{{ onSaveClicked() }}"
+            "button#saveButton": {
+                "once:class": "mr-q2",
+                "once:textContent": "保存",
+                "on:click": "{{ onSaveClicked() }}"
+            }
+        },
+        "div#automation": {
+            "button#recognitionButton": {
+                "once:class": "mr-q2",
+                "once:textContent": "ガイド",
+                "on:click": "{{ onRecognitionClicked() }}"
+            },
+            "button#positionAdjustmentButton": {
+                "once:class": "mr-q2",
+                "once:textContent": "表情",
+                "on:click": "{{ onFaceAdjustmentClicked() }}"    
+            },
+            "button#frameAdjustmentButton": {
+                "once:textContent": "身体",
+                "on:click": "{{ onBodyAdjustmentClicked() }}"
+
+            }
         }
     },
     "div#preview": {
@@ -265,12 +295,191 @@ const template = {
             "once:tabindex": 1,
             "on:mousedown": "{{ onMouseDown(event) }}",
             "on:mousemove": "{{ onMouseMove(event) }}",
-            "on:keydown": "{{ onKeyDown(event) }}",
             "on:wheel": "{{ onWheel(event) }}",
             "on:dblclick": "{{ onDoubleClick(event) }}"
         }
     }
 };
+
+/**
+ * compare 2 images and calculate difference score
+ * @param {ImageData} lower 
+ * @param {ImageData} upper 
+ */
+function calcScore(lower, upper) {
+    let score = 0;
+    if (lower.data.byteLength === upper.data.byteLength) {
+        for (let i = lower.data.byteLength; i; ) {
+            i -= 4;
+            if (upper.data[i + 3]) {
+                const alphaA = lower.data[i + 3] / 255;
+                const alphaB = upper.data[i + 3] / 255;
+                const diff = Math.sqrt(
+                    (Math.pow(lower.data[i] * alphaA - upper.data[i] * alphaB, 2)
+                    + Math.pow(lower.data[i + 1] * alphaA - upper.data[i + 1] * alphaB, 2)
+                    + Math.pow(lower.data[i + 2] * alphaA - upper.data[i + 2] * alphaB, 2)) / 3);
+
+                if (diff <= 16) {
+                    score -= 16384;
+                }
+                else {
+                    score += diff;
+                }
+            }
+            else {
+                // do nothing
+            }
+        }
+    }
+    return score;
+}
+
+/**
+ * estimate and fix pasted face example position
+ * @param {ImageData} sample 
+ * @param {Nina.DrawableElement} texture
+ * @param {Nina.Rect} rect 
+ */
+function estimatePosition(sample, texture, rect) {
+    const compare = calcScore;
+
+    /*
+     * best estimated position and score
+    */
+    let best = {
+        pos: rect,
+        image: null,
+        score: null,
+    };
+    best.image = Nina.getImageData(texture, best.pos);
+    best.score = compare(sample, best.image);
+
+    const nexts = [
+        { dx:  1, dy:  0 },
+        { dx:  0, dy:  1 },
+        { dx: -1, dy:  0 },
+        { dx:  0, dy: -1 },
+        { dx:  2, dy:  0 },
+        { dx:  0, dy:  2 },
+        { dx: -2, dy:  0 },
+        { dx:  0, dy: -2 },
+    ];
+
+    /*
+     * search best estimated position
+     */
+    const prev = best.pos;
+    for (let i = 0; i < 32; ++i) {
+        let localBest = null;
+        for (const next of nexts) {
+            const pos = {
+                x: prev.x + next.dx,
+                y: prev.y + next.dy,
+                w: prev.w,
+                h: prev.h,
+            };
+            const image = Nina.getImageData(texture, pos);
+            const score = compare(sample, image);
+            if (localBest === null || score < localBest.score) {
+                localBest = {
+                    pos,
+                    image,
+                    score,
+                };
+                if (localBest.score < best.score) {
+                    best = localBest;
+                }    
+            }
+
+        }
+
+        if (prev.x === localBest.pos.x && prev.y === localBest.pos.y) {
+            break;
+        }
+
+        prev.x = localBest.pos.x;
+        prev.y = localBest.pos.y;
+    }
+
+    return best;
+}
+
+/**
+ * shrink or maximize rectangle
+ * @param {Nina.DrawableElement} texture
+ * @param {Nina.Rect} rect 
+ * @returns {Nina.Rect}
+ */
+function adjustRect(texture, rect) {
+    rect = Object.create(rect);
+
+    /**
+     * 
+     * @param {Nina.Rect} line 
+     */
+    const isNull = (line) => {
+        const imageData = Nina.getImageData(texture, line);
+        for (let i = imageData.data.byteLength ; i;) {
+            i -= 4;
+            if (3 <= imageData.data[i + 3]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    let extendPhase = true;
+    while (true) {
+        const borders = [
+            {
+                extend: { y: -1, h: 1 },
+                line: { x: rect.x, y: rect.y, w: rect.w, h: 1 }, // top
+            },
+            {
+                extend: { w: 1 },
+                line: { x: rect.x + rect.w - 1, y: rect.y,  w: 1, h: rect.h }, // right
+            },
+            {
+                extend: { h: 1 },
+                line: { x: rect.x, y: rect.y + rect.h - 1, w: rect.w, h: 1 }, // bottom
+            },
+            {
+                extend: { x: -1, w: 1 },
+                line: { x: rect.x, y: rect.y, w: 1, h: rect.h }, // left
+            }
+        ]
+
+        let updated = false;
+        if (extendPhase) {
+            for (const border of borders) {
+                if (!isNull(border.line)) {
+                    for (const d in border.extend) {
+                        rect[d] += border.extend[d];
+                    }
+                    updated = true;
+                }
+            }
+            if (!updated) {
+                extendPhase = false;
+            }
+        }
+        else {
+            for (const border of borders) {
+                if (isNull(border.line)) {
+                    for (const d in border.extend) {
+                        rect[d] -= border.extend[d];
+                    }
+                    updated = true;
+                }
+            }
+            if (!updated) {
+                break;
+            }
+        }
+    }
+
+    return rect;
+}
 
 /**
  * @typedef {{
@@ -292,22 +501,26 @@ const template = {
  *         get: function(number): number,
  *         set: function(number, number): void
  *     },
+ *     isBodyRectFixed: boolean,
  *     makeCharacterName: function(CharacterJson): string,
  *     updateFaceEdge: function(number, number, number, number): void,
+ *     fixBodyRect: function(boolean): void,
  *     onCharacterChanged: function(number): void,
  *     onFaceChanged: function(number): void,
  *     onMouseDown: function(MouseEvent): void,
  *     onMouseMove: function(MouseEvent): void,
  *     onWheel: function(WheelEvent): void,
- *     onKeyDown: function(KeyboardEvent): void,
  *     onDoubleClick: function(): void,
  *     onSaveClicked: function(): void,
+ *     onRecognitionClicked: () => void,
+ *     onFaceAdjustmentClicked: () => void,
+ *     onBodyAdjustmentClicked: () => void,
+ *     onWindowKeyDown: function(KeyboardEvent): void,
  *     onWindowMouseUp: function(MouseEvent): void,
  *     onWindowPaste: function(Event): void,
- *     onWindowDoubleClick: function(): void,
+ *     onBackgroundDoubleClick: function(): void,
  * }} Data
  */
-
 /**
  * @param {CharacterEditor} characterEditor
  * @returns {Data}
@@ -377,6 +590,8 @@ function createData(characterEditor) {
             }
         },
 
+        isBodyRectFixed: false,
+
         makeCharacterName(character) {
             let name = character.name;
     
@@ -422,6 +637,10 @@ function createData(characterEditor) {
             face_rect[5] += dh;
     
             characterEditor.updateFace();
+        },
+
+        fixBodyRect(fixed) {
+            data.isBodyRectFixed = fixed;
         },
 
         onCharacterChanged(index) {
@@ -496,7 +715,7 @@ function createData(characterEditor) {
                 makeFaceHandler(0, 1, 4, 5),
                 makeFaceHandler(2, 3, 4, 5),
                 {
-                    rect: data.renderer.getExample(),
+                    rect: data.renderer.getExample() ? data.renderer.getExample().rect : null,
                     mouseMove(dx, dy) {
                         data.renderer.setExample(
                             this.rect.x + dx / data.renderer.getScale() | 0,
@@ -504,13 +723,15 @@ function createData(characterEditor) {
                         characterEditor.updateBody();
                     },
                     arrowKey(dx, dy) {
-                        const rect = data.renderer.getExample();
+                        const rect = data.renderer.getExample().rect;
                         data.renderer.setExample(rect.x + dx, rect.y + dy);
                         characterEditor.updateBody();
                     }
                 },
                 {
-                    rect: { x: body_rect[0], y: body_rect[1], w: body_rect[2], h: body_rect[3] },
+                    rect: data.isBodyRectFixed
+                        ? { x: 0, y: 0, w: 0, h: 0 }
+                        : { x: body_rect[0], y: body_rect[1], w: body_rect[2], h: body_rect[3] },
                     mouseMove(dx, dy) {
                         body_rect[0] = this.rect.x + dx / data.renderer.getScale() | 0;
                         body_rect[1] = this.rect.y + dy / data.renderer.getScale() | 0;
@@ -569,7 +790,7 @@ function createData(characterEditor) {
             }
         },
 
-        onKeyDown(e) {
+        onWindowKeyDown(e) {
             switch (e.key) {
             case "ArrowLeft":
                 if (data.holdOrigin) {
@@ -646,6 +867,137 @@ function createData(characterEditor) {
             fr.readAsDataURL(new Blob([  JSON.stringify(json, undefined, 2) ]));
         },
 
+        onRecognitionClicked() {
+            const example = data.renderer.getExample();
+            if (example && data.renderer.image) {
+                /*
+                 * get example image data 
+                 */
+                const example = data.renderer.getExample();
+                const exampleData = Nina.getImageData(example.image,
+                    { x: 0, y:0, w: example.image.width, h: example.image.height });
+    
+                /*
+                 * fix example position
+                 */
+                const estimated = estimatePosition(exampleData, data.renderer.image, example.rect);
+                data.renderer.setExample(estimated.pos.x, estimated.pos.y);
+
+                /*
+                 * find best face from guides
+                 */
+                let bestFace = null;
+                const faces = [];
+                for (const guide of data.renderer.guide) {
+                    const face = estimatePosition(
+                        exampleData,
+                        data.renderer.image, 
+                        {
+                            x: guide.x - (exampleData.width >> 1),
+                            y: guide.y - (exampleData.height >> 1),
+                            w: exampleData.width,
+                            h: exampleData.height,
+                        });
+                    faces.push(face);
+                    if (bestFace === null || face.score < bestFace.score) {
+                        console.log(face.score, bestFace ? bestFace.score : -1);
+                        bestFace = face;
+                    }
+                }
+
+                /*
+                 * update and adjust face with the best if there is 
+                 */
+                if (bestFace) {
+                    const currentCharacter = data.characters[data.characterIndex];
+                    const currentFace = data.faces[data.faceIndex];
+                    const newFaceRect = adjustRect(data.renderer.image, {
+                        x: bestFace.pos.x,
+                        y: bestFace.pos.y,
+                        w: exampleData.width,
+                        h: exampleData.height,
+                    });
+
+                    currentCharacter.face_rect[currentFace] = [
+                        estimated.pos.x + newFaceRect.x - bestFace.pos.x,
+                        estimated.pos.y + newFaceRect.y - bestFace.pos.y,
+                        newFaceRect.x,
+                        newFaceRect.y,
+                        newFaceRect.w,
+                        newFaceRect.h,
+                    ];
+                    characterEditor.updateFace();
+                }
+
+                data.renderer.update();
+            }
+        },
+
+        onFaceAdjustmentClicked() {
+            const example = data.renderer.getExample();
+            if (example && data.renderer.image) {
+                /*
+                 * get example image data 
+                 */
+                const example = data.renderer.getExample();
+                const exampleData = Nina.getImageData(example.image,
+                    { x: 0, y:0, w: example.image.width, h: example.image.height });
+    
+                /*
+                 * fix example position
+                 */
+                const estimated = estimatePosition(exampleData, data.renderer.image, example.rect);
+                data.renderer.setExample(estimated.pos.x, estimated.pos.y);
+
+                /*
+                 * find best position from current
+                 */
+                const currentCharacter = data.characters[data.characterIndex];
+                const currentFace = data.faces[data.faceIndex];
+                const faceRect = currentCharacter.face_rect[currentFace];
+                const estimatedFace = estimatePosition(
+                    exampleData,
+                    data.renderer.image, 
+                    {
+                        x: faceRect[2],
+                        y: faceRect[3],
+                        w: exampleData.width,
+                        h: exampleData.height,
+                    });
+
+                /*
+                 * adjust current face size
+                 */
+                const newFaceRect = adjustRect(data.renderer.image, estimatedFace.pos);
+                faceRect[0] = estimated.pos.x + newFaceRect.x - estimatedFace.pos.x;
+                faceRect[1] = estimated.pos.y + newFaceRect.y - estimatedFace.pos.y;
+                faceRect[2] = newFaceRect.x;
+                faceRect[3] = newFaceRect.y;
+                faceRect[4] = newFaceRect.w;
+                faceRect[5] = newFaceRect.h;
+
+                characterEditor.updateFace();
+                data.renderer.update();
+            }
+        },
+
+        onBodyAdjustmentClicked() {
+            const currentCharacter = data.characters[data.characterIndex];
+            const newBodyRect = adjustRect(data.renderer.image, {
+                x: currentCharacter.body_rect[0],
+                y: currentCharacter.body_rect[1],
+                w: currentCharacter.body_rect[2],
+                h: currentCharacter.body_rect[3],
+            });
+            currentCharacter.body_rect[0] = newBodyRect.x;
+            currentCharacter.body_rect[1] = newBodyRect.y;
+            currentCharacter.body_rect[2] = newBodyRect.w;
+            currentCharacter.body_rect[3] = newBodyRect.h;
+
+            characterEditor.updateBody();
+            data.renderer.update();
+        },
+
         /**
          * mouse up evemt
          */
@@ -676,7 +1028,7 @@ function createData(characterEditor) {
             }
         },
 
-        onWindowDoubleClick() {
+        onBackgroundDoubleClick() {
             data.preview.style.top = '0px';
             data.preview.style.left = '0px';
         }
@@ -693,8 +1045,9 @@ export default class CharacterEditor {
 
     show() {
         window.addEventListener('mouseup', this.#data.onWindowMouseUp);
+        window.addEventListener('keydown', this.#data.onWindowKeyDown);
         window.addEventListener('paste', this.#data.onWindowPaste);
-        window.addEventListener('dblclick', this.#data.onWindowDoubleClick);
+        document.getElementById('background').addEventListener('dblclick', this.#data.onBackgroundDoubleClick);
 
         this.#adelite.show(this.#data).then(() => {
             this.#data.preview = this.#adelite.getElementById('preview');
@@ -716,8 +1069,9 @@ export default class CharacterEditor {
         this.#adelite.destroy();
 
         window.removeEventListener('mouseup', this.#data.onWindowMouseUp);
+        window.removeEventListener('keydown', this.#data.onWindowKeyDown);
         window.removeEventListener('paste', this.#data.onWindowPaste);
-        window.removeEventListener('dblclick', this.#data.onWindowDoubleClick);
+        document.getElementById('background').removeEventListener('dblclick', this.#data.onBackgroundDoubleClick);
         this.#data = null;
     }
 
@@ -734,8 +1088,8 @@ export default class CharacterEditor {
         this.#adelite.update();
     }
 
-    static INITIAL_FACE_POSITION = [0, 0, 100, 0, 100, 100];
-    static INITIAL_BODY_POSITION = [200, 0, 100, 100];
+    static INITIAL_FACE_POSITION = [100, 0, 200, 0, 100, 100];
+    static INITIAL_BODY_POSITION = [300, 0, 100, 100];
 
     /** @type {Adelite} */
     #adelite = null;
@@ -826,6 +1180,48 @@ class CharacterTestRenderer {
         }
     }
 
+    /**
+     * draw face with boroder
+     * @param {number} faceIndex
+     * @param {string} borderColor
+     */
+    drawFace(faceIndex, borderColor) {
+        const faceRect = this.#faceRects[faceIndex];
+
+        if (faceIndex === this.#faceActive) {
+            const dst_rect = {
+                x: faceRect['dstx'],
+                y: faceRect['dsty'],
+                w: faceRect['w'],
+                h: faceRect['h']
+            };
+    
+            this.#ctx.drawImage(this.#image,
+                faceRect['srcx'], faceRect['srcy'], faceRect['w'], faceRect['h'],
+                faceRect['dstx'], faceRect['dsty'], faceRect['w'], faceRect['h']);
+            if (this.#faceOriented) {
+                this.drawDot(dst_rect, this.DST_RECT_COLOR);
+            }
+            else {
+                this.drawRect(dst_rect, this.DST_RECT_COLOR);
+            }
+        }
+
+        const src_rect = {
+            x: faceRect['srcx'],
+            y: faceRect['srcy'],
+            w: faceRect['w'],
+            h: faceRect['h']
+        };
+
+        if (this.#faceOriented) {
+            this.drawDot(src_rect, borderColor);
+        }
+        else {
+            this.drawRect(src_rect, borderColor);
+        }              
+    }
+
     drawGrid(interval, color) {
         this.#ctx.beginPath();
         for (let x = 0; x < CANVAS_SIZE; x += interval) {
@@ -870,56 +1266,35 @@ class CharacterTestRenderer {
             this.#ctx.drawImage(this.#image, 0, 0);
 
             if (this.#faceRects) {
+                /*
+                 * draw inactive face rectangles
+                 */
                 for (let i = 0; i < this.#faceRects.length; ++i) {
-                    const faceRect = this.#faceRects[i];
-
-                    const src_rect = {
-                        x: faceRect['srcx'],
-                        y: faceRect['srcy'],
-                        w: faceRect['w'],
-                        h: faceRect['h']
-                    };
-
-                    const dst_rect = {
-                        x: faceRect['dstx'],
-                        y: faceRect['dsty'],
-                        w: faceRect['w'],
-                        h: faceRect['h']
-                    };
-
-                    if (i == this.#faceActive) {
-                        this.#ctx.drawImage(this.#image,
-                            faceRect['srcx'], faceRect['srcy'], faceRect['w'], faceRect['h'],
-                            faceRect['dstx'], faceRect['dsty'], faceRect['w'], faceRect['h']);
-
-                        if (this.#faceOriented) {
-                            this.drawDot(dst_rect, this.DST_RECT_COLOR);
-                            this.drawDot(src_rect, this.SRC_RECT_COLOR);
-                        }
-                        else {
-                            this.drawRect(dst_rect, this.DST_RECT_COLOR);
-                            this.drawRect(src_rect, this.SRC_RECT_COLOR);
-                        }                            
-                    }
-                    else {
-                        if (this.#faceOriented) {
-                            this.drawDot(src_rect, this.SRC_RECT_INACTIVE_COLOR);
-                        }
-                        else {
-                            this.drawRect(src_rect, this.SRC_RECT_INACTIVE_COLOR);
-                        }                            
+                    if (i != this.#faceActive) {
+                        this.drawFace(i, this.SRC_RECT_INACTIVE_COLOR);                   
                     }
                 }
 
+                /*
+                 * draw face
+                 */
+                this.drawFace(this.#faceActive, this.SRC_RECT_COLOR);
+
+                /*
+                 * draw pasted example image
+                 */
                 if (this.#example.image) {
                     this.#ctx.save();
                     this.#ctx.globalAlpha = 0.5;
                     this.#ctx.drawImage(this.#example.image, this.#example.x, this.#example.y);
                     this.#ctx.restore();
 
-                    this.drawRect(this.getExample(), this.EXAMPLE_FRAME_COLOR);
+                    this.drawRect(this.getExample().rect, this.EXAMPLE_FRAME_COLOR);
                 }
 
+                /*
+                 * draw face guide
+                 */
                 for (const guide of this.#guide) {
                     this.drawDot({
                         x: guide.x,
@@ -1020,16 +1395,16 @@ class CharacterTestRenderer {
         this.#guide.push({ x, y });
     }
 
-    /**
-     * @returns {BodyRect}
-     */
     getExample() {
         if (this.#example.image) {
             return {
-                x: this.#example.x,
-                y: this.#example.y,
-                w: this.#example.image.width,
-                h: this.#example.image.height
+                image: this.#example.image,
+                rect: {
+                    x: this.#example.x,
+                    y: this.#example.y,
+                    w: this.#example.image.width,
+                    h: this.#example.image.height
+                }
             };
         }
         return null;
@@ -1047,13 +1422,27 @@ class CharacterTestRenderer {
         }
     }
 
+    putImage(image, x) {
+        this.#ctx.putImageData(image, x, 0);
+    }
+
     get image() {
         return this.#image;
     }
 
+    get guide() {
+        return this.#guide;
+    }
+
     #config = null;
+
+    /** @type {HTMLCanvasElement} */
     #canvas = null;
+
+    /** @type {CanvasRenderingContext2D} */
     #ctx = null;
+
+    /** @type {string | null} */
     #path = null;
     #animated = false;
 
