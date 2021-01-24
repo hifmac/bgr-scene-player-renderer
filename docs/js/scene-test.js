@@ -494,7 +494,6 @@ class SceneTest {
             dy: faceRect.dy - bodyRect.y,
         };
         const faceOffsetH = faceRect.dw >> 1;
-        const faceOffsetV = faceRect.dh >> 1;
 
         const ret = {
             body: null, 
