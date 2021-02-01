@@ -7,7 +7,7 @@
  */
 'use strict';
 
-import { Filesystem, makeError, rejectError } from '../blanc/lisette.js';
+import { Filesystem, makeError, rejectError, saveURLAsFile } from '../blanc/lisette.js';
 import * as Viola from './viola.js';
 
 /**
@@ -258,7 +258,9 @@ export function readAsImage(path) {
                     const img = new Image();
                     img.src = url;
                     return new Promise((resolveImage) => {
-                        img.addEventListener('load', () => resolveImage(img));
+                        img.addEventListener('load', () => {
+                            resolveImage(img);
+                        });
                     });        
                 }).then((img) => {
                     resolve({ data: img, size: img.width * img.height * 4 });
@@ -275,7 +277,7 @@ export function readAsImage(path) {
                     resolve({
                         data: img,
                         size: img.width * img.height * 4
-                    });
+                    }); 
                 }
                 catch (e) {
                     rejectError(e, reject);
@@ -358,5 +360,93 @@ export function getImageData(image, rect) {
         return imageToCanvas(image, rect)
             .getContext('2d')
             .getImageData(0, 0, rect.w, rect.h);
+    }
+}
+
+export class LumaData {
+    /**
+     * @constructor
+     * @param {ImageData | Int16Array} imageData 
+     * @param {number|*} width
+     * @param {number|*} height
+     */
+    constructor(imageData, width, height) {
+        if (imageData instanceof ImageData) {
+            this.data = new Int16Array(imageData.width * imageData.height);
+            this.width = imageData.width;
+            this.height = imageData.height;
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                const alpha = imageData.data[i + 3] / 255;
+                if (alpha === 0) {
+                    this.data[i >> 2] = -1;
+                }
+                else {
+                    const luma = imageData.data[i] * 0.2126 * alpha
+                        + imageData.data[i + 1] * 0.7152 * alpha
+                        + imageData.data[i + 2] * 0.0722 * alpha;
+                    this.data[i >> 2] = luma | 0;
+                }
+            }
+        }
+        else if (imageData instanceof Int16Array) {
+            this.data = imageData;
+            this.width = width;
+            this.height = height;
+        }
+        else {
+            throw makeError(`${typeof imageData} is not supported`);
+        }
+    }
+
+    /**
+     * make a part of image from self
+     * @param {number} x 
+     * @param {number} y 
+     * @param {number} w 
+     * @param {number} h 
+     * @returns {LumaData}
+     */
+    subimage(x, y, w, h) {
+        if (y < 0) {
+            h += y;
+            y = 0;
+        }
+
+        if (x < 0) {
+            w += x;
+            x = 0;
+        }
+
+        const data = new Int16Array(w * h);
+        data.fill(-1);
+        for (let dy = 0, sy = y; dy < h; ++dy, ++sy) {
+            if (0 <= sy && sy < this.height) {
+                let dx = w * dy;
+                let sx = this.width * sy + x;
+                for (let i = w; i--; ++dx, ++sx) {
+                    data[dx] = this.data[sx];
+                }
+            }
+        }
+        return new LumaData(data, w, h);
+    }
+
+    save(filename) {
+        const imageData = new ImageData(this.width, this.height);
+        for (let i = 0; i < this.data.byteLength; ++i) {
+            const offset = i << 2;
+            if (this.data[i] !== -1) {
+                imageData.data[offset    ] = this.data[i];
+                imageData.data[offset + 1] = this.data[i];
+                imageData.data[offset + 2] = this.data[i];
+                imageData.data[offset + 3] = 255;
+            }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = this.width;
+        canvas.height = this.height;
+        const context = canvas.getContext('2d');
+        context.putImageData(imageData, 0, 0);
+        saveURLAsFile(filename, canvas.toDataURL(), 'image/png');
     }
 }

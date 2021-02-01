@@ -15,7 +15,6 @@ import {
     MOUSE_BUTTON_SECONDARY,
     sortCharacter,
     saveURLAsFile,
-    MOUSE_BUTTON_WHEEL
 } from '../blanc/lisette.js';
 import * as Nina from '../valmir/nina.js';
 import Adelite from '../sandica/adelite.js';
@@ -50,6 +49,9 @@ const template = {
                 "bind:value": "{{ face }}",
                 "bind:textContent": "{{ face }}"
             }
+        },
+        "label": {
+            "bind:textContent": "{{ completedCharacters }}キャラ"
         }
     },
     "div.character-texture-setting p-q2": {
@@ -303,27 +305,17 @@ const template = {
 
 /**
  * compare 2 images and calculate difference score
- * @param {ImageData} lower 
- * @param {ImageData} upper 
+ * @param {Nina.LumaData} lower 
+ * @param {Nina.LumaData} upper 
  */
 function calcScore(lower, upper) {
     let score = 0;
     if (lower.data.byteLength === upper.data.byteLength) {
-        for (let i = lower.data.byteLength; i; ) {
-            i -= 4;
-            if (upper.data[i + 3]) {
-                const alphaA = lower.data[i + 3] / 255;
-                const alphaB = upper.data[i + 3] / 255;
-                const diff = Math.sqrt(
-                    (Math.pow(lower.data[i] * alphaA - upper.data[i] * alphaB, 2)
-                    + Math.pow(lower.data[i + 1] * alphaA - upper.data[i + 1] * alphaB, 2)
-                    + Math.pow(lower.data[i + 2] * alphaA - upper.data[i + 2] * alphaB, 2)) / 3);
-
-                if (diff <= 16) {
-                    score -= 16384;
-                }
-                else {
-                    score += diff;
+        for (let i = lower.data.byteLength; i--; ) {
+            if (upper.data[i] !== -1) {
+                const c = Math.abs(lower.data[i] - upper.data[i]) - 8;
+                if (c < 0) {
+                    score += c * c * c;
                 }
             }
             else {
@@ -336,8 +328,8 @@ function calcScore(lower, upper) {
 
 /**
  * estimate and fix pasted face example position
- * @param {ImageData} sample 
- * @param {Nina.DrawableElement} texture
+ * @param {Nina.LumaData} sample 
+ * @param {Nina.LumaData} texture
  * @param {Nina.Rect} rect 
  */
 function estimatePosition(sample, texture, rect) {
@@ -351,54 +343,39 @@ function estimatePosition(sample, texture, rect) {
         image: null,
         score: null,
     };
-    best.image = Nina.getImageData(texture, best.pos);
+    best.image = texture.subimage(best.pos.x, best.pos.y, best.pos.w, best.pos.h);
     best.score = compare(sample, best.image);
 
-    const nexts = [
-        { dx:  1, dy:  0 },
-        { dx:  0, dy:  1 },
-        { dx: -1, dy:  0 },
-        { dx:  0, dy: -1 },
-        { dx:  1, dy:  1 },
-        { dx:  1, dy: -1 },
-        { dx: -1, dy:  1 },
-        { dx:  1, dy: -1 },
-    ];
+    const nexts = [];
+    for (let dx = -16; dx <= 16; ++dx) {
+        for (let dy = -16; dy <= 16; ++dy) {
+            if (dx !== 0 || dy !== 0) {
+                nexts.push({ dx, dy });
+            }
+        }
+    }
 
     /*
      * search best estimated position
      */
     const prev = best.pos;
-    for (let i = 0; i < 64; ++i) {
-        let localBest = null;
-        for (const next of nexts) {
-            const pos = {
-                x: prev.x + next.dx,
-                y: prev.y + next.dy,
-                w: prev.w,
-                h: prev.h,
+    for (const next of nexts) {
+        const pos = {
+            x: prev.x + next.dx,
+            y: prev.y + next.dy,
+            w: prev.w,
+            h: prev.h,
+        };
+        const image = texture.subimage(pos.x, pos.y, pos.w, pos.h);
+        const score = compare(sample, image);
+        if (score < best.score) {
+            best = {
+                pos,
+                image,
+                score,
             };
-            const image = Nina.getImageData(texture, pos);
-            const score = compare(sample, image);
-            if (localBest === null || score < localBest.score) {
-                localBest = {
-                    pos,
-                    image,
-                    score,
-                };
-                if (localBest.score < best.score) {
-                    best = localBest;
-                }    
-            }
-
         }
 
-        if (prev.x === localBest.pos.x && prev.y === localBest.pos.y) {
-            break;
-        }
-
-        prev.x = localBest.pos.x;
-        prev.y = localBest.pos.y;
     }
 
     return best;
@@ -420,11 +397,11 @@ function adjustRect(texture, rect) {
     const isNull = (line) => {
         const imageData = Nina.getImageData(texture, line);
         let count = 0;
-        for (let i = imageData.data.byteLength ; i;) {
+        for (let i = imageData.data.byteLength; i;) {
             i -= 4;
             count += imageData.data[i + 3];
         }
-        return count < 32;
+        return count < imageData.data.byteLength;
     }
 
     let extendPhase = true;
@@ -481,6 +458,27 @@ function adjustRect(texture, rect) {
 }
 
 /**
+ * count character setting tasks we should do
+ * @param {CharacterJson} character 
+ */
+function countTasks(character) {
+    const noOrInitialBodyPosition = character.body_rect.length !== 4
+        || JSON.stringify(character.body_rect) == JSON.stringify(CharacterEditor.INITIAL_BODY_POSITION);
+
+    let remainingFaces = 0;
+    for (const face in character.face_rect) {
+        const noOrInitialFacePosition = character.face_rect[face].length !== 6 
+            || JSON.stringify(character.face_rect[face]) === JSON.stringify(CharacterEditor.INITIAL_FACE_POSITION);
+        remainingFaces += (noOrInitialFacePosition ? 1 : 0);
+    }
+
+    return {
+        body: noOrInitialBodyPosition ? 1 : 0,
+        face: remainingFaces
+    };
+}
+
+/**
  * @typedef {{
  *     preview: HTMLDivElement,
  *     renderer: CharacterTestRenderer,
@@ -501,6 +499,7 @@ function adjustRect(texture, rect) {
  *         set: function(number, number): void
  *     },
  *     isBodyRectFixed: boolean,
+ *     completedCharacters: number,
  *     makeCharacterName: function(CharacterJson): string,
  *     updateFaceEdge: function(number, number, number, number): void,
  *     fixBodyRect: function(boolean): void,
@@ -520,6 +519,7 @@ function adjustRect(texture, rect) {
  *     onBackgroundDoubleClick: function(): void,
  * }} Data
  */
+
 /**
  * @param {CharacterEditor} characterEditor
  * @returns {Data}
@@ -590,34 +590,22 @@ function createData(characterEditor) {
         },
 
         isBodyRectFixed: false,
+        completedCharacters: 0,
 
         makeCharacterName(character) {
+            const tasks = countTasks(character);
             let name = character.name;
-    
-            const noOrInitialBodyPosition = character.body_rect.length !== 4
-                || JSON.stringify(character.body_rect) == JSON.stringify(CharacterEditor.INITIAL_BODY_POSITION);
-    
-            let remaining_faces = 0;
-            for (const face in character.face_rect) {
-                const noOrInitialFacePosition = character.face_rect[face].length !== 6 
-                    || JSON.stringify(character.face_rect[face]) === JSON.stringify(CharacterEditor.INITIAL_FACE_POSITION);
-                remaining_faces += (noOrInitialFacePosition ? 1 : 0);
-            }
-    
-            if (noOrInitialBodyPosition || remaining_faces) {
-                if (noOrInitialBodyPosition && remaining_faces) {
-                    name = '[×] ' + name;
+            if (0 < tasks.body + tasks.face) {
+                if (tasks.body && tasks.face) {
+                    name = `[×] ${name}`;
                 }
                 else {
-                    name = '[△] ' + name;
+                    name = `[△] ${name}`;
                 }
-                name += '(';
-                name += '身体：' + (noOrInitialBodyPosition ? '未' : '完');
-                name += ', 表情：' + (remaining_faces ? '残' + remaining_faces : '完');
-                name += ')';
+                name += `(身体：${tasks.body ? '未' : '完'}, 表情：${tasks.face ? `残${tasks.face}` : '完'})`;
             }
-            else if (!noOrInitialBodyPosition && !remaining_faces) {
-                name = '[〇] ' + name;
+            else {
+                name = `[〇] ${name}`;
             }
     
             return name;  
@@ -867,19 +855,22 @@ function createData(characterEditor) {
         },
 
         onRecognitionClicked() {
+
             const example = data.renderer.getExample();
             if (example && data.renderer.image) {
                 /*
                  * get example image data 
                  */
                 const example = data.renderer.getExample();
-                const exampleData = Nina.getImageData(example.image,
-                    { x: 0, y:0, w: example.image.width, h: example.image.height });
+                const exampleData = new Nina.LumaData(Nina.getImageData(example.image,
+                    { x: 0, y:0, w: example.image.width, h: example.image.height }));
     
                 /*
                  * fix example position
                  */
-                const estimated = estimatePosition(exampleData, data.renderer.image, example.rect);
+                const lumaImage = new Nina.LumaData(Nina.getImageData(data.renderer.image,
+                    { x: 0, y:0, w: data.renderer.image.width, h: data.renderer.image.height }));
+                const estimated = estimatePosition(exampleData, lumaImage, example.rect);
                 data.renderer.setExample(estimated.pos.x, estimated.pos.y);
 
                 /*
@@ -890,7 +881,7 @@ function createData(characterEditor) {
                 for (const guide of data.renderer.guide) {
                     const face = estimatePosition(
                         exampleData,
-                        data.renderer.image, 
+                        lumaImage, 
                         {
                             x: guide.x - (exampleData.width >> 1),
                             y: guide.y - (exampleData.height >> 1),
@@ -910,12 +901,12 @@ function createData(characterEditor) {
                 if (bestFace) {
                     const currentCharacter = data.characters[data.characterIndex];
                     const currentFace = data.faces[data.faceIndex];
-                    const newFaceRect = adjustRect(data.renderer.image, {
+                    const newFaceRect = bestFace.pos; /*adjustRect(data.renderer.image, {
                         x: bestFace.pos.x,
                         y: bestFace.pos.y,
                         w: exampleData.width,
                         h: exampleData.height,
-                    });
+                    });*/
 
                     currentCharacter.face_rect[currentFace] = [
                         estimated.pos.x + newFaceRect.x - bestFace.pos.x,
@@ -928,7 +919,14 @@ function createData(characterEditor) {
                     characterEditor.updateFace();
                 }
 
-                data.renderer.update();
+                setTimeout(() => {
+                    if (confirm('OK？')) {
+                        if (data.faceIndex + 1 < data.faces.length) {
+                            ++data.faceIndex;
+                            characterEditor.updateFace();
+                        }
+                    }    
+                }, 100);
             }
         },
 
@@ -939,13 +937,15 @@ function createData(characterEditor) {
                  * get example image data 
                  */
                 const example = data.renderer.getExample();
-                const exampleData = Nina.getImageData(example.image,
-                    { x: 0, y:0, w: example.image.width, h: example.image.height });
+                const exampleData = new Nina.LumaData(Nina.getImageData(example.image,
+                    { x: 0, y:0, w: example.image.width, h: example.image.height }));
     
                 /*
                  * fix example position
                  */
-                const estimated = estimatePosition(exampleData, data.renderer.image, example.rect);
+                const lumaImage = new Nina.LumaData(Nina.getImageData(data.renderer.image,
+                    { x: 0, y:0, w: data.renderer.image.width, h: data.renderer.image.height }))
+                const estimated = estimatePosition(exampleData, lumaImage, example.rect);
                 data.renderer.setExample(estimated.pos.x, estimated.pos.y);
 
                 /*
@@ -956,7 +956,7 @@ function createData(characterEditor) {
                 const faceRect = currentCharacter.face_rect[currentFace];
                 const estimatedFace = estimatePosition(
                     exampleData,
-                    data.renderer.image, 
+                    lumaImage, 
                     {
                         x: faceRect[2],
                         y: faceRect[3],
@@ -1054,9 +1054,14 @@ export default class CharacterEditor {
             return Promise.all(Array.from(this.#config.json.character, (x) => Filesystem.readJsonFile(x)));
         }).then((jsons) => {
             this.#data.characters = [];
+            this.#data.completedCharacters = 0;
             const characters = mergeObject(jsons);
             for (const key of Object.keys(characters)) {
                 this.#data.characters.push(characters[key]);
+                const tasks = countTasks(characters[key]);
+                if (tasks.body + tasks.face === 0) {
+                    ++this.#data.completedCharacters;
+                }
             }
             sortCharacter(this.#data.characters);
             this.#data.onCharacterChanged(this.#data.characterIndex);
