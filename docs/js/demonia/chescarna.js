@@ -134,7 +134,6 @@ export class View {
      */
     constructor(tagName, template) {
         this.#tagName = tagName;
-        this.template = template;
         this.#children = [];
         this.#childTags = [];
         this.#bind = {};
