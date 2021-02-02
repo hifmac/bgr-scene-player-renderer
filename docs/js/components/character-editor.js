@@ -311,19 +311,50 @@ const template = {
 function calcScore(lower, upper) {
     let score = 0;
     if (lower.data.byteLength === upper.data.byteLength) {
-        for (let i = lower.data.byteLength; i--; ) {
-            if (upper.data[i] !== -1) {
-                const c = Math.abs(lower.data[i] - upper.data[i]) - 8;
-                if (c < 0) {
-                    score += c * c * c;
-                }
-            }
-            else {
-                // do nothing
-            }
+        let i = lower.data.byteLength | 0;
+        let c = 0;
+        while (i & 0x1f) {
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+        }
+        while (i) {
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
         }
     }
-    return score;
+    return -score;
 }
 
 /**
