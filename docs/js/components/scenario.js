@@ -80,7 +80,7 @@ export default class Scenario {
                 this.onViewChanged(data.page.view);
             }
             else if ('html' in data.page) {
-                IPC.loadHtml(data.page.html);
+                IPC.createWindow(data.page.html, {});
             }
             else {
                 console.error('Cannot handle: ', data.page);

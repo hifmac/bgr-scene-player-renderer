@@ -351,8 +351,20 @@ export class View {
     #condition = () => true;
 }
 
-/** @type {Set<() => void>} */
+/** @type {Set<Component>} */
 const PENDING_COMPONENTS = new Set();
+
+/** @type {Array<(value: any) => void>} */
+const PENDING_PROMISE = [];
+
+function updateInternal() {
+    PENDING_COMPONENTS.forEach((comp) => comp.update());
+    PENDING_COMPONENTS.clear();
+
+    while (PENDING_PROMISE.length) {
+        PENDING_PROMISE.shift()();
+    }
+}
 
 /**
  * update all components recursively
@@ -361,17 +373,12 @@ const PENDING_COMPONENTS = new Set();
 export function update(component) {
     if (component) {
         if (PENDING_COMPONENTS.size == 0) {
-            requestAnimationFrame(() => {
-                PENDING_COMPONENTS.forEach((p) => p());
-                PENDING_COMPONENTS.clear();
-            });
+            requestAnimationFrame(updateInternal);
         }
     
         return new Promise((resolve) => {
-            PENDING_COMPONENTS.add(() => {
-                component.update();
-                resolve();
-            });
+            PENDING_COMPONENTS.add(component);
+            PENDING_PROMISE.push(resolve);
         });
     }
     return null;

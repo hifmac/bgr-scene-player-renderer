@@ -115,20 +115,31 @@ export const BGRSP = 'bgrsp' in window;
 
 /**
  * IPC for intellisense
+ * @typedef {{
+ *     id: number,
+ *     getBindingRect: () =>Promise<{
+ *         x: number,
+ *         y: number,
+ *         w: number,
+ *         h: number,
+ *     }>,
+ *     close: () => void
+ * }} IPCWindow
+ * 
  * @type {{
  *    requestPage: (string) => Promise<Object>,
  *    requestDialog: (string) => Promise<Object>,
  *    requestDirectory: (string) => Promise<Object>,
  *    requestPageList: () => Promise<string[]>,
  *    requestDialogList: () => Promise<string[]>
- *    loadHtml: (string) => void,
+ *    createWindow: (string, any) => IPCWindow,
  *    searchCharacter: (string) => Promise<Object[]>,
  *    searchTalk: (string) => Promise<Object[]>,
  *    searchBGM: (string) => Promise<Object[]>,
  *    searchDialog: (string) => Promise<Object[]>
  * }}
  */
-//@ts-ignore
+// @ts-ignore - defined in electron preload js
 export const IPC = BGRSP ? window.bgrsp.IPC : null;
 
 /**
@@ -141,7 +152,7 @@ export const IPC = BGRSP ? window.bgrsp.IPC : null;
  *     getWindowURL: (string) => Promise<string>,
  * }}
  */
-//@ts-ignore
+// @ts-ignore - defined in electron preload js
 export const Filesystem = BGRSP ? window.bgrsp.Filesystem : null;
 
 /**
@@ -153,8 +164,15 @@ export const Filesystem = BGRSP ? window.bgrsp.Filesystem : null;
  *     CONFIG_JSON: string,
  * }}
  */
-//@ts-ignore
+// @ts-ignore - defined in electron preload js
 export const SETTINGS = BGRSP ? window.bgrsp.SETTINGS : null;
+
+/**
+ * get screen source id to get user media
+ * @type {() => Promise<number>}
+ */
+// @ts-ignore - defined in electron preload js
+export const getScreenSourceID  = BGRSP ? window.bgrsp.captureScreen : null
 
 /**
  * zip 2 arguments into 1 array to iterate
@@ -368,6 +386,25 @@ export function saveURLAsFile(filename, url, type) {
     downLoadLink.click();
     return new Promise((resolve) => {
         downLoadLink.addEventListener('click', resolve);
+    });
+}
+
+/**
+ * make a promise for requestAnimationFrame
+ */
+export function onAnimationFrame() {
+    return new Promise((resolve) => {
+        requestAnimationFrame(resolve);
+    });
+}
+
+/**
+ * make a promise for setTimeout
+ * @param {number} timeout 
+ */
+export function onTimeout(timeout) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, timeout);
     });
 }
 

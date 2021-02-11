@@ -81,6 +81,10 @@ function drawPage(
             scenario.back();
         }
         else {
+            if (currentView) {
+                currentView.destroy();
+            }
+
             background.setDialog('/dialog/dialog1');
             scenario.show();
             currentView = scenario;

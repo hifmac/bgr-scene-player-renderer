@@ -15,6 +15,9 @@ import {
     MOUSE_BUTTON_SECONDARY,
     sortCharacter,
     saveURLAsFile,
+    IPC,
+    onTimeout,
+    getScreenSourceID,
 } from '../blanc/lisette.js';
 import * as Nina from '../valmir/nina.js';
 import Adelite from '../sandica/adelite.js';
@@ -309,49 +312,49 @@ const template = {
  * @param {Nina.LumaData} upper 
  */
 function calcScore(lower, upper) {
+    const threshold = 9;
     let score = 0;
     if (lower.data.byteLength === upper.data.byteLength) {
         let i = lower.data.byteLength | 0;
-        let c = 0;
         while (i & 0x1f) {
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
         }
         while (i) {
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
 
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
 
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
 
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
-            c = Math.abs(lower.data[i] - upper.data[i--]) - 8; score += (c < 0 ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
         }
     }
     return -score;
@@ -364,7 +367,7 @@ function calcScore(lower, upper) {
  * @param {Nina.Rect} rect 
  */
 function estimatePosition(sample, texture, rect) {
-    const compare = calcScore;
+    const range = 20;
 
     /*
      * best estimated position and score
@@ -375,11 +378,11 @@ function estimatePosition(sample, texture, rect) {
         score: null,
     };
     best.image = texture.subimage(best.pos.x, best.pos.y, best.pos.w, best.pos.h);
-    best.score = compare(sample, best.image);
+    best.score = calcScore(sample, best.image);
 
     const nexts = [];
-    for (let dx = -16; dx <= 16; ++dx) {
-        for (let dy = -16; dy <= 16; ++dy) {
+    for (let dx = -range; dx <= range; ++dx) {
+        for (let dy = -range; dy <= range; ++dy) {
             if (dx !== 0 || dy !== 0) {
                 nexts.push({ dx, dy });
             }
@@ -398,7 +401,7 @@ function estimatePosition(sample, texture, rect) {
             h: prev.h,
         };
         const image = texture.subimage(pos.x, pos.y, pos.w, pos.h);
-        const score = compare(sample, image);
+        const score = calcScore(sample, image);
         if (score < best.score) {
             best = {
                 pos,
@@ -422,66 +425,69 @@ function adjustRect(texture, rect) {
     rect = Object.create(rect);
 
     /**
-     * 
+     * calculate transparent score
      * @param {Nina.Rect} line 
      */
-    const isNull = (line) => {
+    const calcTransparentScore = (line) => {
         const imageData = Nina.getImageData(texture, line);
         let count = 0;
         for (let i = imageData.data.byteLength; i;) {
             i -= 4;
             count += imageData.data[i + 3];
         }
-        return count < imageData.data.byteLength;
+        return count / (imageData.data.byteLength * 255 / 4);
     }
 
-    let extendPhase = true;
-    while (true) {
-        const borders = [
-            {
-                extend: { y: -1, h: 1 },
-                line: { x: rect.x, y: rect.y, w: rect.w, h: 1 }, // top
-            },
-            {
-                extend: { w: 1 },
-                line: { x: rect.x + rect.w - 1, y: rect.y,  w: 1, h: rect.h }, // right
-            },
-            {
-                extend: { h: 1 },
-                line: { x: rect.x, y: rect.y + rect.h - 1, w: rect.w, h: 1 }, // bottom
-            },
-            {
-                extend: { x: -1, w: 1 },
-                line: { x: rect.x, y: rect.y, w: 1, h: rect.h }, // left
+    const best = {
+        top: {
+            line: 0,
+            makeLine() {
+                return { x: rect.x, y: rect.y, w: rect.w, h: 1 };
             }
-        ]
-
-        let updated = false;
-        if (extendPhase) {
-            for (const border of borders) {
-                if (!isNull(border.line)) {
-                    for (const d in border.extend) {
-                        rect[d] += border.extend[d];
-                    }
-                    updated = true;
-                }
+        },
+        bottom: {
+            line: 0,
+            makeLine() {
+                return { x: rect.x, y: rect.y + rect.h - 1, w: rect.w, h: 1 };
             }
-            if (!updated) {
-                extendPhase = false;
+        },
+        left: {
+            line: 0,
+            makeLine() {
+                return { x: rect.x, y: rect.y, w: 1, h: rect.h };
+            }
+        },
+        right: {
+            line: 0,
+            makeLine() {
+                return { x: rect.x + rect.w - 1, y: rect.y, w: 1, h: rect.h };
             }
         }
+    };
+
+    while (true) {
+        /* calculate transparency score */
+        for (const key in best) {
+            const score = calcTransparentScore(best[key].makeLine());
+            best[key].line = 0.01 < score ? 1 : 0;
+        }
+
+        /* check updated */
+        let updated = false;
+        for (const key in best) {
+            updated = updated || (best[key].line !== 0);
+        }
+
+        if (updated) {
+            rect = {
+                x: rect.x - best.left.line,
+                y: rect.y - best.top.line,
+                w: rect.w + best.right.line + best.left.line,
+                h: rect.h + best.bottom.line + best.top.line,
+            };
+        }
         else {
-            for (const border of borders) {
-                if (isNull(border.line)) {
-                    for (const d in border.extend) {
-                        rect[d] -= border.extend[d];
-                    }
-                    updated = true;
-                }
-            }
-            if (!updated) {
-                break;
-            }
+            break;
         }
     }
 
@@ -529,8 +535,11 @@ function countTasks(character) {
  *         get: function(number): number,
  *         set: function(number, number): void
  *     },
+ *     currentCharacter: CharacterJson,
+ *     currentFace: string,
  *     isBodyRectFixed: boolean,
  *     completedCharacters: number,
+ *     mediaSourceId: number,
  *     makeCharacterName: function(CharacterJson): string,
  *     updateFaceEdge: function(number, number, number, number): void,
  *     fixBodyRect: function(boolean): void,
@@ -584,44 +593,45 @@ function createData(characterEditor) {
 
         face: {
             get(index) {
-                const currentCharacter = data.characters[data.characterIndex];
-                const currentFace = data.faces[data.faceIndex];        
-                if (currentCharacter && currentFace) {
-                    return currentCharacter.face_rect[currentFace][index];
+                try {
+                    return data.currentCharacter.face_rect[data.currentFace][index];
                 }
-                return 0;
+                catch {
+                    return 0;
+                }
             },
-
             set(index, value) {
-                const currentCharacter = data.characters[data.characterIndex];
-                const currentFace = data.faces[data.faceIndex];        
-                if (currentCharacter && currentFace) {
-                    currentCharacter.face_rect[currentFace][index] = value;
-                    characterEditor.updateFace();
-                }
+                data.currentCharacter.face_rect[data.currentFace][index] = value;
+                characterEditor.updateFace();
             }
         },
 
         body: {
             get(index) {
-                const currentCharacter = data.characters[data.characterIndex];
-                if (currentCharacter) {
-                    return currentCharacter.body_rect[index];
+                try {
+                    return data.currentCharacter.body_rect[index];
                 }
-                return 0;
+                catch {
+                    return 0;
+                }
             },
             set(index, value) {
-                const currentCharacter = data.characters[data.characterIndex];
-                if (currentCharacter) {
-                    currentCharacter.body_rect[index] = value;
-                    console.log(currentCharacter);
-                    characterEditor.updateBody();
-                }
+                data.currentCharacter.body_rect[index] = value;
+                characterEditor.updateBody();
             }
         },
 
         isBodyRectFixed: false,
         completedCharacters: 0,
+        mediaSourceId: null,
+
+        get currentCharacter() {
+            return data.characters[data.characterIndex];
+        },
+
+        get currentFace() {
+            return data.faces[data.faceIndex];
+        },
 
         makeCharacterName(character) {
             const tasks = countTasks(character);
@@ -643,17 +653,13 @@ function createData(characterEditor) {
         },
 
         updateFaceEdge(dx, dy, dw, dh) {
-            const currentCharacter = data.characters[data.characterIndex];
-            const currentFace = data.faces[data.faceIndex];
-            const face_rect = currentCharacter.face_rect[currentFace];
-    
+            const face_rect = data.currentCharacter.face_rect[data.currentFace];
             face_rect[0] += dx;
             face_rect[1] += dy;
             face_rect[2] += dx;
             face_rect[3] += dy;
             face_rect[4] += dw;
-            face_rect[5] += dh;
-    
+            face_rect[5] += dh;    
             characterEditor.updateFace();
         },
 
@@ -663,35 +669,30 @@ function createData(characterEditor) {
 
         onCharacterChanged(index) {
             data.characterIndex = index;
-            const currentCharacter = data.characters[data.characterIndex];
-            data.renderer.setCharacter(currentCharacter.texture);
-            data.faces = Object.keys(currentCharacter.face_rect);
-    
-            const currentFace = data.faces[data.faceIndex];
-    
-            if (currentCharacter.face_rect[currentFace].length == 0) { 
-                currentCharacter.face_rect[currentFace] = CharacterEditor.INITIAL_FACE_POSITION.slice();
+            data.renderer.setCharacter(data.currentCharacter.texture);
+            data.faces = Object.keys(data.currentCharacter.face_rect);
+        
+            if (data.currentCharacter.face_rect[data.currentFace].length == 0) { 
+                data.currentCharacter.face_rect[data.currentFace] =
+                    CharacterEditor.INITIAL_FACE_POSITION.slice();
             }
             characterEditor.updateFace();
     
-            if (currentCharacter.body_rect.length == 0) { 
-                currentCharacter.body_rect = CharacterEditor.INITIAL_BODY_POSITION.slice();
+            if (data.currentCharacter.body_rect.length == 0) { 
+                data.currentCharacter.body_rect = CharacterEditor.INITIAL_BODY_POSITION.slice();
             }
             characterEditor.updateBody();
         },
     
         onFaceChanged(index) {
-            const currentCharacter = data.characters[data.characterIndex];
-            const oldValues = currentCharacter.face_rect[data.faces[data.faceIndex]].slice();
-    
+            const oldValues = data.currentCharacter.face_rect[data.currentFace].slice();
             data.faceIndex = index;
-            const currentFace = data.faces[data.faceIndex];
-    
-            if (currentCharacter.face_rect[currentFace].length == 0) {
-                currentCharacter.face_rect[currentFace] = oldValues;
+            if (data.currentCharacter.face_rect[data.currentFace].length == 0) {
+                data.currentCharacter.face_rect[data.currentFace] = oldValues;
             }
-            if (currentCharacter.face_rect[currentFace].length == 0) {
-                currentCharacter.face_rect[currentFace] = CharacterEditor.INITIAL_FACE_POSITION.slice();
+            if (data.currentCharacter.face_rect[data.currentFace].length == 0) {
+                data.currentCharacter.face_rect[data.currentFace] =
+                    CharacterEditor.INITIAL_FACE_POSITION.slice();
             }
             characterEditor.updateFace();
         },
@@ -704,12 +705,9 @@ function createData(characterEditor) {
                 return ;
             }
 
-            const currentCharacter = data.characters[data.characterIndex];
-            const currentFace = data.faces[data.faceIndex];
-
             const tmp = new HoldObject(data.renderer);
-            const body_rect = currentCharacter.body_rect;
-            const face_rect = currentCharacter.face_rect[currentFace];
+            const body_rect = data.currentCharacter.body_rect;
+            const face_rect = data.currentCharacter.face_rect[data.currentFace];
 
             const makeFaceHandler = (x, y, w, h) => {
                 return {
@@ -717,13 +715,13 @@ function createData(characterEditor) {
                     mouseMove(dx, dy) {
                         face_rect[x] = this.rect.x + dx / data.renderer.getScale() | 0;
                         face_rect[y] = this.rect.y + dy / data.renderer.getScale() | 0;
-                        data.renderer.setFace(currentCharacter.face_rect, data.faces[data.faceIndex]);
+                        data.renderer.setFace(data.currentCharacter.face_rect, data.faces[data.faceIndex]);
                         characterEditor.updateFace();
                     },
                     arrowKey: (dx, dy) => {
                         face_rect[x] += dx;
                         face_rect[y] += dy;
-                        data.renderer.setFace(currentCharacter.face_rect, data.faces[data.faceIndex]);
+                        data.renderer.setFace(data.currentCharacter.face_rect, data.faces[data.faceIndex]);
                         characterEditor.updateFace();
                     }
                 }
@@ -859,11 +857,13 @@ function createData(characterEditor) {
 
         onDoubleClick() {
             if (data.renderer.image) {
-                const currentCharacter = data.characters[data.characterIndex];
-                const filename = currentCharacter.name + '.png';
+                const filename = data.currentCharacter.name + '.png';
                 const type = 'image/png';
                 if (data.renderer.image instanceof HTMLImageElement) {
                     saveURLAsFile(filename, data.renderer.image.src, type);
+                }
+                else if (data.renderer.image instanceof HTMLVideoElement) {
+                    saveURLAsFile(filename, Nina.toDataURL(data.renderer.image), type);
                 }
                 else {
                     saveURLAsFile(filename, data.renderer.image.toDataURL(), type);
@@ -872,93 +872,96 @@ function createData(characterEditor) {
         },
 
         onSaveClicked() {
-            const currentCharacter = data.characters[data.characterIndex];
             const json = {};
-            json[currentCharacter.id] = currentCharacter;
+            json[data.currentCharacter.id] = data.currentCharacter;
     
             const fr = new FileReader();
             fr.addEventListener('load', (event) => {
                 if (typeof event.target.result === 'string') {
-                    saveURLAsFile(currentCharacter.id + ".json", event.target.result, 'text/plain')
+                    saveURLAsFile(data.currentCharacter.id + ".json", event.target.result, 'text/plain')
                 }
             });
             fr.readAsDataURL(new Blob([  JSON.stringify(json, undefined, 2) ]));
         },
 
         onRecognitionClicked() {
-
+            /*
+             * get example image data 
+             */
             const example = data.renderer.getExample();
-            if (example && data.renderer.image) {
-                /*
-                 * get example image data 
-                 */
-                const example = data.renderer.getExample();
-                const exampleData = new Nina.LumaData(Nina.getImageData(example.image,
-                    { x: 0, y:0, w: example.image.width, h: example.image.height }));
-    
-                /*
-                 * fix example position
-                 */
-                const lumaImage = new Nina.LumaData(Nina.getImageData(data.renderer.image,
-                    { x: 0, y:0, w: data.renderer.image.width, h: data.renderer.image.height }));
-                const estimated = estimatePosition(exampleData, lumaImage, example.rect);
-                data.renderer.setExample(estimated.pos.x, estimated.pos.y);
+            const exampleData = new Nina.LumaData(Nina.getImageData(example.image,
+                { x: 0, y:0, w: example.image.width, h: example.image.height }));
 
-                /*
-                 * find best face from guides
-                 */
-                let bestFace = null;
-                const faces = [];
-                for (const guide of data.renderer.guide) {
-                    const face = estimatePosition(
-                        exampleData,
-                        lumaImage, 
-                        {
-                            x: guide.x - (exampleData.width >> 1),
-                            y: guide.y - (exampleData.height >> 1),
-                            w: exampleData.width,
-                            h: exampleData.height,
-                        });
-                    faces.push(face);
-                    if (bestFace === null || face.score < bestFace.score) {
-                        console.log(face.score, bestFace ? bestFace.score : -1);
-                        bestFace = face;
-                    }
-                }
+            /*
+             * fix example position
+             */
+            const lumaImage = new Nina.LumaData(Nina.getImageData(data.renderer.image,
+                { x: 0, y:0, w: data.renderer.image.width, h: data.renderer.image.height }));
+            const estimated = estimatePosition(exampleData, lumaImage, example.rect);
+            data.renderer.setExample(estimated.pos.x, estimated.pos.y);
 
-                /*
-                 * update and adjust face with the best if there is 
-                 */
-                if (bestFace) {
-                    const currentCharacter = data.characters[data.characterIndex];
-                    const currentFace = data.faces[data.faceIndex];
-                    const newFaceRect = bestFace.pos; /*adjustRect(data.renderer.image, {
-                        x: bestFace.pos.x,
-                        y: bestFace.pos.y,
+            /*
+             * find best face from guides
+             */
+            const faces = [];
+            for (const guide of data.renderer.guide) {
+                const face = estimatePosition(
+                    exampleData,
+                    lumaImage, 
+                    {
+                        x: guide.x - (exampleData.width >> 1),
+                        y: guide.y - (exampleData.height >> 1),
                         w: exampleData.width,
                         h: exampleData.height,
-                    });*/
+                    });
+                faces.push(face);
+                faces.sort((a, b) => {
+                    return a.score - b.score;
+                });
+            }
 
-                    currentCharacter.face_rect[currentFace] = [
-                        estimated.pos.x + newFaceRect.x - bestFace.pos.x,
-                        estimated.pos.y + newFaceRect.y - bestFace.pos.y,
-                        newFaceRect.x,
-                        newFaceRect.y,
-                        newFaceRect.w,
-                        newFaceRect.h,
+            /*
+             * update and adjust face with the best if there is 
+             */
+            const oldFace = data.currentCharacter.face_rect[data.currentFace];
+
+            const confirmFace = () => {
+                if (faces.length) {
+                    const bestFace = faces.shift();
+                    data.currentCharacter.face_rect[data.currentFace] = [
+                        estimated.pos.x,
+                        estimated.pos.y,
+                        bestFace.pos.x,
+                        bestFace.pos.y,
+                        bestFace.pos.w,
+                        bestFace.pos.h,
                     ];
                     characterEditor.updateFace();
-                }
-
-                setTimeout(() => {
-                    if (confirm('OK？')) {
-                        if (data.faceIndex + 1 < data.faces.length) {
-                            ++data.faceIndex;
-                            characterEditor.updateFace();
+        
+                    data.renderer.onAnimated().then(() => {
+                        if (confirm('これで良いですか？')) {
+                            data.renderer.removeGuide(bestFace.pos);
+                            if (confirm('次の表情に切り替えてください') && data.faceIndex + 1 < data.faces.length) {
+                                ++data.faceIndex;
+                                characterEditor.updateFace();
+                                characterEditor.faceCapturer.wait().then(() => {
+                                    data.onRecognitionClicked();
+                                })
+                            }
                         }
-                    }    
-                }, 100);
-            }
+                        else {
+                            confirmFace();
+                        }
+                    });
+                }
+                else {
+                    data.currentCharacter.face_rect[data.currentFace] = oldFace;
+                    characterEditor.updateFace();
+                    alert('残念・・・');
+                }
+            };
+
+            confirmFace();
         },
 
         onFaceAdjustmentClicked() {
@@ -998,13 +1001,12 @@ function createData(characterEditor) {
                 /*
                  * adjust current face size
                  */
-                const newFaceRect = adjustRect(data.renderer.image, estimatedFace.pos);
-                faceRect[0] = estimated.pos.x + newFaceRect.x - estimatedFace.pos.x;
-                faceRect[1] = estimated.pos.y + newFaceRect.y - estimatedFace.pos.y;
-                faceRect[2] = newFaceRect.x;
-                faceRect[3] = newFaceRect.y;
-                faceRect[4] = newFaceRect.w;
-                faceRect[5] = newFaceRect.h;
+                faceRect[0] = estimated.pos.x ;
+                faceRect[1] = estimated.pos.y;
+                faceRect[2] = estimatedFace.pos.x;
+                faceRect[3] = estimatedFace.pos.y;
+                faceRect[4] = estimatedFace.pos.w;
+                faceRect[5] = estimatedFace.pos.h;
 
                 characterEditor.updateFace();
                 data.renderer.update();
@@ -1063,6 +1065,7 @@ function createData(characterEditor) {
             data.preview.style.left = '0px';
         }
     };
+
     return data;
 }
 
@@ -1071,6 +1074,7 @@ export default class CharacterEditor {
         this.#adelite = new Adelite(id, template);
         this.#config = config;
         this.#data = createData(this);
+        this.#faceCapturer = new FaceCapturer();
     }
 
     show() {
@@ -1090,17 +1094,23 @@ export default class CharacterEditor {
             for (const key of Object.keys(characters)) {
                 this.#data.characters.push(characters[key]);
                 const tasks = countTasks(characters[key]);
-                if (tasks.body + tasks.face === 0) {
+                if (tasks.body + tasks.face <= 3) {
                     ++this.#data.completedCharacters;
                 }
             }
             sortCharacter(this.#data.characters);
             this.#data.onCharacterChanged(this.#data.characterIndex);
-        })
-        .catch(printStack);
+            this.#faceCapturer.start();
+            this.#faceCapturer.addUpdateListener((img) => {
+                this.#data.renderer.setExample(0, 0, img);
+                this.#data.renderer.update();
+            });
+        }).catch(printStack);
     }
 
     destroy() {
+        console.log('destroy!');
+
         this.#adelite.destroy();
 
         window.removeEventListener('mouseup', this.#data.onWindowMouseUp);
@@ -1108,6 +1118,9 @@ export default class CharacterEditor {
         window.removeEventListener('paste', this.#data.onWindowPaste);
         document.getElementById('background').removeEventListener('dblclick', this.#data.onBackgroundDoubleClick);
         this.#data = null;
+
+        this.#faceCapturer.stop();
+        this.#faceCapturer = null;
     }
 
     updateBody() {
@@ -1126,6 +1139,10 @@ export default class CharacterEditor {
     static INITIAL_FACE_POSITION = [100, 0, 200, 0, 100, 100];
     static INITIAL_BODY_POSITION = [300, 0, 100, 100];
 
+    get faceCapturer() {
+        return this.#faceCapturer;
+    }
+
     /** @type {Adelite} */
     #adelite = null;
 
@@ -1134,6 +1151,9 @@ export default class CharacterEditor {
 
     /** @type {Data} */
     #data = null;
+
+    /** @type {FaceCapturer} */
+    #faceCapturer = null;
 }
 
 /**
@@ -1181,7 +1201,7 @@ class CharacterTestRenderer {
     }
 
     drawDot(rect, color, size=2) {
-        if (rect) {
+        if (this.#enableRectangle && rect) {
             const x = rect['x'] + rect['w'] / 2 | 0;
             const y = rect['y'] + rect['h'] / 2 | 0;
             this.#ctx.beginPath();
@@ -1197,7 +1217,7 @@ class CharacterTestRenderer {
     }
 
     drawRect(rect, color) {
-        if (rect) {
+        if (this.#enableRectangle && rect) {
             const x1 = rect['x'];
             const y1 = rect['y'];
             const x2 = x1 + rect['w'] - 1;
@@ -1258,19 +1278,21 @@ class CharacterTestRenderer {
     }
 
     drawGrid(interval, color) {
-        this.#ctx.beginPath();
-        for (let x = 0; x < CANVAS_SIZE; x += interval) {
-            this.#ctx.moveTo(x, 0);
-            this.#ctx.lineTo(x, CANVAS_SIZE);
+        if (this.#enableRectangle) {
+            this.#ctx.beginPath();
+            for (let x = 0; x < CANVAS_SIZE; x += interval) {
+                this.#ctx.moveTo(x, 0);
+                this.#ctx.lineTo(x, CANVAS_SIZE);
+            }
+            for (let y = 0; y < CANVAS_SIZE; y += interval) {
+                this.#ctx.moveTo(0, y);
+                this.#ctx.lineTo(CANVAS_SIZE, y);
+            }
+            this.#ctx.closePath();
+            this.#ctx.lineWidth = 3;
+            this.#ctx.strokeStyle = color;
+            this.#ctx.stroke();
         }
-        for (let y = 0; y < CANVAS_SIZE; y += interval) {
-            this.#ctx.moveTo(0, y);
-            this.#ctx.lineTo(CANVAS_SIZE, y);
-        }
-        this.#ctx.closePath();
-        this.#ctx.lineWidth = 3;
-        this.#ctx.strokeStyle = color;
-        this.#ctx.stroke();
     }
 
     update() {
@@ -1278,6 +1300,16 @@ class CharacterTestRenderer {
             this.#animated = true;
             requestAnimationFrame(() => this.animationFrame());
         }
+    }
+
+    #enableRectangle = true;
+
+    #animationListener = [];
+
+    onAnimated() {
+        return new Promise((resolve) => {
+            this.#animationListener.push(resolve);
+        });
     }
 
     animationFrame() {
@@ -1345,6 +1377,12 @@ class CharacterTestRenderer {
             }
 
             this.#ctx.resetTransform();
+        }
+
+        if (this.#animationListener.length) {
+            onTimeout(0).then(() => {
+                this.#animationListener.forEach((listener) => listener());
+            });
         }
     }
 
@@ -1430,6 +1468,15 @@ class CharacterTestRenderer {
         this.#guide.push({ x, y });
     }
 
+    removeGuide(rect) {
+        this.#guide = this.#guide.filter((guide) => {
+            return !(rect.x <= guide.x
+                && guide.x < rect.x + rect.w
+                && rect.y <= guide.y
+                && guide.y < rect.y + rect.h);
+        });
+    }
+
     getExample() {
         if (this.#example.image) {
             return {
@@ -1457,8 +1504,8 @@ class CharacterTestRenderer {
         }
     }
 
-    putImage(image, x) {
-        this.#ctx.putImageData(image, x, 0);
+    get canvas() {
+        return this.#canvas;
     }
 
     get image() {
@@ -1479,6 +1526,7 @@ class CharacterTestRenderer {
 
     /** @type {string | null} */
     #path = null;
+
     #animated = false;
 
     /** @type {Nina.DrawableElement} */
@@ -1507,6 +1555,115 @@ class CharacterTestRenderer {
     #faceOriented = false;
 
     #scale = 1.0;
+}
+
+class FaceCapturer {
+    constructor() {
+        this.#listeners = [];
+        this.#waiters = [];
+    }
+
+    /**
+     * start capture
+     */
+    start() {
+        this.stop();
+
+        this.#frameWindow = IPC.createWindow('frame.html', {
+            width: 128,
+            height: 128,
+            alwaysOnTop: true,
+            openDevTools: false,
+            transparent: true,
+            frame: false
+        });
+    
+        this.#video = document.createElement('video');
+        this.#video.ontimeupdate = () => {
+            if(this.#frameWindow) {
+                this.#frameWindow.getBindingRect().then((rect) => {
+                    if (this.#video) {
+                        const borderSize = 3;
+                        rect.x += borderSize;
+                        rect.y += borderSize;
+                        rect.w -= borderSize * 3;
+                        rect.h -= borderSize * 3;
+                        return Nina.clipImage(this.#video, rect);    
+                    }
+                    return null;
+                }).then((img) => {
+                    for (const listener of this.#listeners) {
+                        listener(img);
+                    }
+                    for (const waiter of this.#waiters) {
+                        waiter(img);
+                    }
+                });
+            }
+        };
+
+        getScreenSourceID().then((sourceId) => {
+            return navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: {
+                    // @ts-ignore - old interface for electron
+                    mandatory: {
+                        chromeMediaSource: 'desktop',
+                        chromeMediaSourceId: sourceId,
+                    },
+                }
+            });
+        }).then((stream) => {
+            this.#video.srcObject = stream
+            this.#video.onloadedmetadata = () => {
+                this.#video.play();
+            };
+        });
+    }
+
+    /**
+     * stop capture
+     */
+    stop() {
+        if (this.#video) {
+            this.#video.pause();
+            this.#video = null;
+        }
+
+        if (this.#frameWindow) {
+            this.#frameWindow.close();
+            this.#frameWindow = null;
+        }
+    }
+
+    /**
+     * add update event listner
+     * @param {function(HTMLCanvasElement): void} listener 
+     */
+    addUpdateListener(listener) {
+        this.#listeners.push(listener);
+    }
+
+    /**
+     * wait next update
+     */
+    wait() {
+        return new Promise((resolve) => {
+            this.#waiters.push(resolve);
+        });
+    }
+
+    /** @type {(function(HTMLCanvasElement): void)[]} */
+    #listeners = null;
+
+    /** @type {(function(HTMLCanvasElement): void)[]} */
+    #waiters = null;
+
+    /** @type {import('../blanc/lisette.js').IPCWindow} */
+    #frameWindow = null;
+
+    /** @type {HTMLVideoElement} */
+    #video = null;
 }
 
 /**

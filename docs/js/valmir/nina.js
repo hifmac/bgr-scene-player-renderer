@@ -11,7 +11,7 @@ import { Filesystem, makeError, rejectError, saveURLAsFile } from '../blanc/lise
 import * as Viola from './viola.js';
 
 /**
- * @typedef {HTMLCanvasElement | HTMLImageElement} DrawableElement 
+ * @typedef {HTMLCanvasElement | HTMLImageElement | HTMLVideoElement} DrawableElement 
  */
 
 /**
@@ -336,10 +336,24 @@ export function makeMaskImage(img) {
 }
 
 /**
+ * convert image to data URL
+ * @param {DrawableElement} img file path to read
+ * @returns {string}
+ */
+export function toDataURL(img) {
+    return imageToCanvas(img, {
+        x: 0,
+        y: 0,
+        w: img.width,
+        h: img.height        
+    }).toDataURL();
+}
+
+/**
  * 
  * @param {DrawableElement} img file path to read
  * @param {Rect} rect
- * @returns {Promise<DrawableElement>}
+ * @returns {Promise<HTMLCanvasElement>}
  */
 export function clipImage(img, rect) {
     return new Promise((resolve) => {
