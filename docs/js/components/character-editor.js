@@ -942,8 +942,7 @@ function createData(characterEditor) {
                         if (confirm('これで良いですか？')) {
                             data.renderer.removeGuide(bestFace.pos);
                             if (confirm('次の表情に切り替えてください') && data.faceIndex + 1 < data.faces.length) {
-                                ++data.faceIndex;
-                                characterEditor.updateFace();
+                                data.onFaceChanged(data.faceIndex + 1);
                                 characterEditor.faceCapturer.wait().then(() => {
                                     data.onRecognitionClicked();
                                 })
