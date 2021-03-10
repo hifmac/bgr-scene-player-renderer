@@ -69,6 +69,7 @@ class Component extends Chescarna.Component {
             }
         }
         else if (name === 'class') {
+            this.#element.classList.remove(...this.#element.classList);
             for (let cls of value.split(' ')) {
                 this.#element.classList.add(cls);
             }
