@@ -80,7 +80,10 @@ export default class Scenario {
                 this.onViewChanged(data.page.view);
             }
             else if ('html' in data.page) {
-                IPC.createWindow(data.page.html, {});
+                IPC.createWindow(data.page.html, { openDevTools: true });
+            }
+            else if ('dialog' in data.page) {
+                IPC.createWindow(`replay.html?v=${data.page.dialog}`, { openDevTools: true });
             }
             else {
                 console.error('Cannot handle: ', data.page);

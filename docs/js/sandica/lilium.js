@@ -451,8 +451,8 @@ class LiliumText extends LiliumBase {
         context.textAlign = 'left';
         context.textBaseline = 'top';
         context.font = this.#font;
+        console.log(context.font);
         for (const s of this.#textContent.split('\n')) {
-            console.log(this.#wrapWidth, this.#lineHeight);
             if (this.#wrapWidth) {
                 for (let i = 0; i < s.length; i += this.#wrapWidth) {
                     this.fillText(context, s.substring(i, i + this.#wrapWidth), x, y);
@@ -503,6 +503,7 @@ class LiliumText extends LiliumBase {
             this.#textContent = value;
             break;
         case 'font':
+            console.log(value);
             this.#font = value;
             break;
         case 'color':
@@ -713,36 +714,26 @@ export default class Lilium {
     }
 
     createElement(tagName) {
-        let id = null;
-
-        switch (tagName.indexOf('#')) {
-        case 0:
-            //@ts-ignore assign HTMLElement to HTMLCanvasElement
-            this.#canvas = document.getElementById(tagName.substring(1));
-            this.#context = this.#canvas.getContext('2d');
-            id = tagName;
-            tagName = 'sprite';
-            break;
-        case -1:
-            break;
-        default:
-            const tag = tagName.split('#');
-            tagName = tag[0];
-            id = tag[1];
-            break;
+        const parsed = Component.parseTag(tagName);
+        if (parsed.tag) {
+            switch (parsed.tag) {
+            case 'image':
+                return new LiliumImage(parsed.id);
+            case 'sprite':
+                return new LiliumSprite(parsed.id);
+            case 'fill':
+                return new LiliumFill(parsed.id);
+            case 'text': 
+                return new LiliumText(parsed.id);
+            default:
+                throw makeError(`${tagName} is not effective tag for Lilium`);
+            }       
         }
-
-        switch (tagName) {
-        case 'image':
-            return new LiliumImage(id);
-        case 'sprite':
-            return new LiliumSprite(id);
-        case 'fill':
-            return new LiliumFill(id);
-        case 'text': 
-            return new LiliumText(id);
-        default:
-            throw makeError(`${tagName} is not effective tag for Lilium`);
+        else {
+            //@ts-ignore assign HTMLElement to HTMLCanvasElement
+            this.#canvas = document.getElementById(parsed.id);
+            this.#context = this.#canvas.getContext('2d');
+            return new LiliumSprite(parsed.id);
         }
     }
 

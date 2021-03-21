@@ -7,13 +7,58 @@
  */
 'use strict'
 
+/**
+ * @typedef {{
+ *     json: {
+ *         page: string[],
+ *         dialog: string[],
+ *         character: string[],
+ *         layout: string[],
+ *         directory: string[],
+ *     },
+ *     data: {
+ *         texture: {
+ *             dialog: string,
+ *             character: string,
+ *             icon: string,
+ *         },
+ *         audio: {
+ *             bgm: string,
+ *             voice: string,
+ *         },
+ *     }
+ * }} Config
+ * 
+ * @typedef {{
+ *     char_id: string,
+ *     name: string,
+ *     bg_pic: string,
+ *     pos: string,
+ *     face: string,
+ *     erace: string,
+ *     cut_out: string,
+ *     next: string[],
+ *     id: string,
+ *     talk: string
+ * }} Dialog
+ * 
+ * @typedef {Object.<string, {
+ *     id: number,
+ *     name: string,
+ *     texture: string,
+ *     body_rect: number[],
+ *     face_rect: Object.<string, number[]>,
+ * }>} Character
+ */
+  
 const configLoader = {
+    /** @type {Config} */
     config: null,
     listenerList: [],
 
     /**
      * invoke listener or push listener into wait queue
-     * @param {function(Object): void} listener an onload event listener
+     * @param {function(Config): void} listener an onload event listener
      */
     invoke(listener) {
         if (this.config) {
@@ -182,8 +227,10 @@ export const getScreenSourceID  = BGRSP ? window.bgrsp.captureScreen : null
  * @yields {T[]} 
  */
 export function* zip(a, b) {
+    const tuple = [ null, null ];
     for (let i = 0, length = Math.min(a.length, b.length); i < length; ++i) {
-        yield [ a[i], b[i] ];
+        tuple[0] = a[i], tuple[1] = b[i];
+        yield tuple;
     }
 };
 
@@ -210,7 +257,7 @@ export function* range(start, end, step) {
 
 /**
  * set a listner called when the application is loaded
- * @param {function(Object) : void} listener listener to be called when application is loaded
+ * @param {function(Config) : void} listener listener to be called when application is loaded
  */
 export function onLoad(listener) {
     configLoader.invoke(listener);
@@ -326,7 +373,7 @@ export function rejectError(status, reject) {
  * @param {Error} exc reject status
  */
 export function printStack(exc) {
-    console.log(exc);
+    console.error(exc);
 }
 
 /**

@@ -7,10 +7,7 @@
  */
 'use strict';
 
-import {
-    makeError,
-    zip
-} from '../blanc/lisette.js';
+import { makeError } from '../blanc/lisette.js';
 import * as Rudesia from './rudesia.js';
 
  /**
@@ -93,6 +90,61 @@ export class Component {
     }
 
     /**
+     * 
+     * @param {string} tag
+     * @returns {{
+     *     tag: string?,
+     *     id: string?,
+     *     name: string?,
+     *     classes: string?,
+     * }}
+     */
+    static parseTag(tag) {
+        const ret = {
+            tag: null,
+            id: null,
+            name: null,
+            classes: null,
+        };
+
+        let start = 0;
+        let type = 'tag';
+        while (true) {
+            const pos = tag.substring(start).search(/[$.#]/);
+            if (pos == -1) {
+                ret[type] = tag.substring(start);
+                break;
+            }
+
+            if (pos !== 0) {
+                ret[type] = tag.substring(start, start + pos);
+            }
+
+            start += pos + 1;
+
+            switch (tag.charAt(pos)) {
+            case '$':
+                type = 'name';
+                break;
+            case '.':
+                type = 'classes';
+                break;
+            case '#':
+                type = 'id';
+                break;
+            default:
+                throw new Error(`Unknown charater: ${tag.charAt(pos)}`);
+            }
+        }
+
+        if (!ret.tag && !ret.id) {
+            throw new Error(`No valid tag: ${tag}`);
+        }
+
+        return ret;
+    }
+
+    /**
      * @param {() => void} value
      */
     set updater(value) {
@@ -115,13 +167,7 @@ export class Component {
 }
 
 /**
- * @typedef {{
- *     iterator: any[],
- *     children: {
- *         condition: boolean,
- *         create: function(function(string): Component): Component
- *     }[]
- * }} Dependency
+ * @typedef {function(): Component[]} ComponentConstructor
  */
 
 /**
@@ -167,75 +213,85 @@ export class View {
                 this.#children.push(new View(childTag, template[childTag]));
             }
         }
-    };
+    }
 
     /**
      * build view
      * @param {Object[]} contextStack
-     * @returns {Dependency}
+     * @param {function(string): Component} createComponent
+     * @returns {ComponentConstructor}
      */
-    buildInternnal(contextStack) {
-        const dependencies = {
-            /** @type {Object[]} */
-            iterator: null,
-            children: [],
-        };
-
+    build(contextStack, createComponent) {
         if (this.#forEach) {
-            const name = this.#forEach.itor;
-            dependencies.iterator = this.#forEach.list(contextStack);
-            for (let itor of dependencies.iterator) {
-                const itorContext = [ {}, ...contextStack ];
-                itorContext[0][name] = itor;
-                dependencies.children.push({
-                    condition: this.#condition(itorContext),
-                    create: (createComponent) => this.createComponent(createComponent, itorContext)
-                });
+            const cache = {
+                iterator: null,
+                contexts: null,
+                conditions: null,
+                components: null,
             }
+
+            return () => {
+                const iterator = this.#forEach.list(contextStack);
+                if (cache.iterator === iterator && cache.iterator.length === iterator.length) {
+                    for (const i in cache.conditions) { 
+                        if (cache.conditions[i] !== this.#condition(cache.contexts[i])) {
+                            cache.conditions = Array(cache.contexts, (ctx) => this.#condition(ctx));
+                            cache.components = [];
+                            for (const i in cache.contexts) { 
+                                if (cache.conditions[i]) { 
+                                    cache.components.push(this.createComponent(cache.contexts[i], createComponent));
+                                }
+                            }        
+                            break;
+                        }
+                    }
+                }
+                else {
+                    cache.iterator = iterator;
+                    cache.contexts = [];
+                    cache.conditions = [];
+                    cache.components = [];
+                    for (const itor of iterator) { 
+                        const itorContext = [
+                            {
+                                [this.#forEach.itor]: itor
+                            },
+                            ...contextStack
+                        ];
+                        const cond = this.#condition(itorContext);
+                        cache.contexts.push(itorContext);
+                        cache.conditions.push(cond);
+                        if (cond) { 
+                            cache.components.push(this.createComponent(itorContext, createComponent));
+                        }
+                    }
+                }
+
+                return cache.components;
+            };
         }
         else {
-            dependencies.children.push({
-                condition: this.#condition(contextStack),
-                create: (createComponent) => this.createComponent(createComponent, contextStack)
-            });
+            const cache = {
+                condition: null,
+                components: null,
+            };
+
+            return () => {
+                const cond = this.#condition(contextStack) ? true : false;
+                if (cache.condition !== cond) {
+                    if (cond) {
+                        cache.condition = true;
+                        cache.components = [ this.createComponent(contextStack, createComponent) ];
+                    }
+                    else {
+                        cache.condition = false;
+                        cache.components = [];
+                    }
+                }
+                return cache.components;
+            };
         }
-
-        return dependencies;
-    };
-
-    /**
-     * build view
-     * @param {Object[]} contextStack
-     * @returns {Dependency}
-     */
-    build(contextStack) {
-        /** @type {Dependency} */
-        const dependency = {
-            iterator: null,
-            children: [],
-        };
-
-        if (this.#forEach) {
-            const name = this.#forEach.itor;
-            dependency.iterator = this.#forEach.list(contextStack);
-            for (let itor of dependency.iterator) {
-                const itorContext = [ {}, ...contextStack ];
-                itorContext[0][name] = itor;
-                dependency.children.push({
-                    condition: this.#condition(itorContext),
-                    create: (createComponent) => this.createComponent(createComponent, itorContext)
-                });
-            }
-        }
-        else {
-            dependency.children.push({
-                condition: this.#condition(contextStack),
-                create: (createComponent) => this.createComponent(createComponent, contextStack)
-            });
-        }
-
-        return dependency;
-    };
+    }
 
     /**
      * build view
@@ -244,18 +300,18 @@ export class View {
      * @returns {Component}
      */
     buildComponent(contextStack, createComponent) {
-        const dependencies = this.build(contextStack);
-        if (dependencies.iterator !== null || dependencies.children.length !== 1) {
+        const components = this.build(contextStack, createComponent)();
+        if (components.length !== 1) {
             throw makeError('the root of the template must not iterate');
         }
-        return dependencies.children[0].create(createComponent);
-    };
+        return components[0];
+    }
 
     /**
-     * @param {function(string): Component} createComponent 
      * @param {Object[]} contextStack
+     * @param {function(string): Component} createComponent 
      */
-    createComponent(createComponent, contextStack) {
+    createComponent(contextStack, createComponent) {
         const component = createComponent(this.#tagName);
         component.setContext(contextStack);
 
@@ -269,46 +325,15 @@ export class View {
             component.setAttribute(key, this.#once[key](component.context));
         }
 
-        /** @type {Dependency[]} */
-        let dependencies = [];
+        const constructors = this.#children.length ? 
+            Array.from(this.#children, (child) => child.build(contextStack, createComponent)) : null;
 
         component.updater = () => {
-            const newDependencies = Array.from(this.#children, (child) => child.build(contextStack));
-
-            let updated = false;
-            if (dependencies.length === newDependencies.length) {
-                for (const dependency of zip(dependencies, newDependencies)) {
-                    if ((dependency[0].iterator !== dependency[1].iterator)
-                        || (dependency[0].children.length !== dependency[1].children.length)) {
-                        updated = true;
-                        break;
-                    }
-
-                    for (const child of zip(dependency[0].children, dependency[1].children)) {
-                        if (child[0].condition !== child[1].condition) {
-                            updated = true;
-                            break;
-                        }    
-                    }
-
-                    if (updated) {
-                        break;
-                    }
-                }
-            }
-            else {
-                updated = true;
-            }
-
-            dependencies = newDependencies;
-
-            if (updated) {
+            if (constructors) {
                 component.clearChild();
-                for (const dependency of dependencies) {
-                    for (const child of dependency.children) {
-                        if (child.condition) {
-                            component.appendChild(child.create(createComponent));
-                        }
+                for (const ctor of constructors) {
+                    for (const child of ctor()) {
+                        component.appendChild(child);
                     }
                 }
             }
@@ -342,7 +367,7 @@ export class View {
     /**
      * @type {{
      *     itor: string,
-     *     list: function(Object[]): Object
+     *     list: function(Object[]): Object[]
      * }}
      */
     #forEach = null

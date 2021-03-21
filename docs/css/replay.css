@@ -1,0 +1,9 @@
+@import './common.css';
+
+#app {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    width: 1024px;
+    height: 576px;
+}

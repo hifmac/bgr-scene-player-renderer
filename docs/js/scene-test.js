@@ -19,112 +19,107 @@ import Lilium from './sandica/lilium.js';
 import * as Ciffon from './jade/ciffon.js';
 import * as Nina from './valmir/nina.js';
 
-import('./valmir/nina.js');
-
 const templateAdelite = {
     "canvas#sceneTestCanvas": {
         "once:width": 1024,
         "once:height": 576,
         "on:click": "{{ toggleUI() }}",
     },
-    "div" :{
-        "div#sceneTestUI": {
-            "if": "{{ isUIEnabled }}",
-            "once:class": "m-q2 p-q2",
-            "div#dialogUI": {
-                "once:class": "mb-q2",
-                "label#dialog": { "once:textContent": "背景選択：" },
-                "select#dialogSelect": {
-                    "once:class": "mr-q2",
-                    "on:change": "{{ onDialogChanged(getAttribute('selectedIndex')) }}",
-                    "option": {
-                        "forEach:dialog": "{{ dialogs }}",
-                        "once:textContent": "{{ dialog }}",
-                    }
-                },
-                "label#frontCharacter": { "once:textContent": "前面キャラ：" },
-                "select#frontCharacterSelect": {
-                    "on:change": "{{ onTopCharacterChanged(getAttribute('value')) }}",
-                    "option#frontCharacterSelectLeft": {
-                        "once:value": "left",
-                        "once:textContent": "左",
-                    },
-                    "option#frontCharacterSelectRight": {
-                        "once:value": "right",
-                        "once:textContent": "右",
-                    }
+    "div#sceneTestUI": {
+        "if": "{{ isUIEnabled }}",
+        "once:class": "m-q2 p-q2",
+        "div#dialogUI": {
+            "once:class": "mb-q2",
+            "label#dialog": { "once:textContent": "背景選択：" },
+            "select#dialogSelect": {
+                "once:class": "mr-q2",
+                "on:change": "{{ onDialogChanged(getAttribute('selectedIndex')) }}",
+                "option": {
+                    "forEach:dialog": "{{ dialogs }}",
+                    "once:textContent": "{{ dialog }}",
                 }
             },
-            "div#CharacterUI": {
-                "forEach:char": "{{ [ ['左キャラ', 'left'], ['右キャラ', 'right'] ] }}",
-                "once:class": "mb-q2",
-                "label#character": { "once:textContent": "{{ char[0] }}：" },
-                "select#characterSelect": {
-                    "once:class": "mr-q2",
-                    "on:change": "{{ onCharacterChanged(getAttribute('selectedIndex'), char[1]) }}",
-                    "option": {
-                        "forEach:character": "{{ characters }}",
-                        "once:textContent": "{{ character.name }}",
-                    }
+            "label#frontCharacter": { "once:textContent": "前面キャラ：" },
+            "select#frontCharacterSelect": {
+                "on:change": "{{ onTopCharacterChanged(getAttribute('value')) }}",
+                "option#frontCharacterSelectLeft": {
+                    "once:value": "left",
+                    "once:textContent": "左",
                 },
-                "select#characterFace": {
-                    "once:class": "mr-q2",
-                    "on:change": "{{ onFaceChanged(getAttribute('selectedIndex'), char[1]) }}",
-                    "option": {
-                        "forEach:face": "{{ faces }}",
-                        "once:textContent": "{{ face }}",
-                    }
-                },
-                "label#shadow": { "once:textContent": "影：" },
-                "input#shadowCheck": {
-                    "once:class": "mr-q2",
-                    "once:type": "checkbox",
-                    "on:change": "{{ onCharacterShadowChanged(getAttribute('checked'), char[1]) }}"
-                },
-                "label#flip": { "once:textContent": "反転：" },
-                "input#flipCheck": {
-                    "once:type": "checkbox",
-                    "on:change": "{{ onCharacterFlipChanged(getAttribute('checked'), char[1]) }}"
+                "option#frontCharacterSelectRight": {
+                    "once:value": "right",
+                    "once:textContent": "右",
                 }
-            },
-            "div#textUI": {
-                "forEach:text": "{{ [ name, talk ] }}",
-                "once:class": "mb-q2",
-                "label.text-title-label": { "once:textContent": "{{ text.label }}" },
-                "input.text-content": {
-                    "once:type": "text",
-                    "once:value": "{{ text.text }}",
-                    "once:placeholder": "{{ text.placeholder }}",
-                    "on:input": "{{ onTextChanged(text, 'text', getAttribute('value')) }}"
-                },
-                "label.text-font-label ml-q2": { "once:textContent": "フォント：" },
-                "select": {
-                    "bind:selectedIndex": "{{ text.font }}",
-                    "on:input": "{{ onTextChanged(text, 'font', getAttribute('selectedIndex')) }}",
-                    "option": {
-                        "forEach:font": "{{ fonts }}",
-                        "once:textContent": "{{ font }}",
-                    }
-                },
-                "label.text-size-label ml-q2": { "once:textContent": "サイズ：" },
-                "input.text-size": {
-                    "once:type": "number",
-                    "bind:value": "{{ text.size }}",
-                    "on:input": "{{ onTextChanged(text, 'size', getAttribute('value')) }}"
-                },
-                "label.text-color-label ml-q2": { "once:textContent": "色：" },
-                "input.text-color": {
-                    "once:type": "text",
-                    "bind:value": "{{ text.color }}",
-                    "on:input": "{{ onTextChanged(text, 'color', getAttribute('value')) }}"
-                },
             }
+        },
+        "div#CharacterUI": {
+            "forEach:char": "{{ [ ['左キャラ', 'left'], ['右キャラ', 'right'] ] }}",
+            "once:class": "mb-q2",
+            "label#character": { "once:textContent": "{{ char[0] }}：" },
+            "select#characterSelect": {
+                "once:class": "mr-q2",
+                "on:change": "{{ onCharacterChanged(getAttribute('selectedIndex'), char[1]) }}",
+                "option": {
+                    "forEach:character": "{{ characters }}",
+                    "once:textContent": "{{ character.name }}",
+                }
+            },
+            "select#characterFace": {
+                "once:class": "mr-q2",
+                "on:change": "{{ onFaceChanged(getAttribute('selectedIndex'), char[1]) }}",
+                "option": {
+                    "forEach:face": "{{ faces }}",
+                    "once:textContent": "{{ face }}",
+                }
+            },
+            "label#shadow": { "once:textContent": "影：" },
+            "input#shadowCheck": {
+                "once:class": "mr-q2",
+                "once:type": "checkbox",
+                "on:change": "{{ onCharacterShadowChanged(getAttribute('checked'), char[1]) }}"
+            },
+            "label#flip": { "once:textContent": "反転：" },
+            "input#flipCheck": {
+                "once:type": "checkbox",
+                "on:change": "{{ onCharacterFlipChanged(getAttribute('checked'), char[1]) }}"
+            }
+        },
+        "div#textUI": {
+            "forEach:text": "{{ [ name, talk ] }}",
+            "once:class": "mb-q2",
+            "label.text-title-label": { "once:textContent": "{{ text.label }}" },
+            "input.text-content": {
+                "once:type": "text",
+                "once:value": "{{ text.text }}",
+                "once:placeholder": "{{ text.placeholder }}",
+                "on:input": "{{ onTextChanged(text, 'text', getAttribute('value')) }}"
+            },
+            "label.text-font-label ml-q2": { "once:textContent": "フォント：" },
+            "select": {
+                "bind:selectedIndex": "{{ text.font }}",
+                "on:change": "{{ onTextChanged(text, 'font', getAttribute('selectedIndex')) }}",
+                "option": {
+                    "forEach:font": "{{ fonts }}",
+                    "once:textContent": "{{ font }}",
+                }
+            },
+            "label.text-size-label ml-q2": { "once:textContent": "サイズ：" },
+            "input.text-size": {
+                "once:type": "number",
+                "bind:value": "{{ text.size }}",
+                "on:input": "{{ onTextChanged(text, 'size', getAttribute('value')) }}"
+            },
+            "label.text-color-label ml-q2": { "once:textContent": "色：" },
+            "input.text-color": {
+                "once:type": "text",
+                "bind:value": "{{ text.color }}",
+                "on:input": "{{ onTextChanged(text, 'color', getAttribute('value')) }}"
+            },
         }
     }
 };
 
 const templateLilium = {
-    "on:update": "",
     "sprite": {
         "once:rect": "{{ [ 0, 0, 1024, 576 ] }}",
         "fill": {
@@ -168,8 +163,8 @@ const templateLilium = {
             },
             "text": {
                 "bind:textContent": "{{ talk.text }}",
-                "once:font": "{{ talk.size }}px \"{{ fonts[talk.font] }}\"",
-                "once:color":"{{ talk.color }}",
+                "bind:font": "{{ talk.size }}px \"{{ fonts[talk.font] }}\"",
+                "bind:color":"{{ talk.color }}",
                 "bind:lineHeight": "{{ add(parseInt(talk.size), 2) }}",
                 "once:wrapWidth": 40,
                 "once:leftTop": "{{ [ 125, 445 ] }}",
@@ -188,8 +183,8 @@ const templateLilium = {
             },
             "text": {
                 "bind:textContent": "{{ name.text }}",
-                "once:font": "{{ name.size }}px \"{{ fonts[name.font] }}\"",
-                "once:color":"{{ name.color }}",
+                "bind:font": "{{ name.size }}px \"{{ fonts[name.font] }}\"",
+                "bind:color":"{{ name.color }}",
                 "once:leftTop": "{{ [ 75, 398 ] }}",
                 "once:border": true,
             }
@@ -433,6 +428,7 @@ class SceneTest {
         
             onTextChanged: (obj, attr, value) => {
                 obj[attr] = value;
+                console.log(`${data.talk.font} => ${data.fonts[data.talk.font]}, ${data.name.font} => ${data.fonts[data.name.font]}`);
                 this.#lilium.update();
             },
         };

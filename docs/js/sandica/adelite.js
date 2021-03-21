@@ -190,30 +190,26 @@ export default class Adelite {
     createElement(tagName) {
         let element;
 
-        switch (tagName.indexOf('#')) {
-        case 0:
-            element = document.getElementById(tagName.substring(1));
+        const parsed = Component.parseTag(tagName);
+        if (parsed.tag) {
+            element = document.createElement(parsed.tag);
+            element.id = parsed.id;
+        }
+        else {
+            element = document.getElementById(parsed.id);
             while (element.firstChild) {
                 element.removeChild(element.firstChild);
             }
-            break;
-        case -1:
-            if (tagName.indexOf('.') !== -1) {
-                const tag = tagName.split('.');
-                element = document.createElement(tag[0]);
-                for (const cls of tag[1].split(' ')) {
-                    element.classList.add(cls);
-                }
+        }
+
+        if (parsed.name) {
+            element.setAttribute('name', parsed.name);
+        }
+
+        if (parsed.classes) {
+            for (const cls of parsed.classes.split(' ')) {
+                element.classList.add(cls);
             }
-            else {
-                element = document.createElement(tagName);
-            }
-            break;
-        default:
-            const tag = tagName.split('#');
-            element = document.createElement(tag[0]);
-            element.id = tag[1]; 
-            break;
         }
 
         return element;
