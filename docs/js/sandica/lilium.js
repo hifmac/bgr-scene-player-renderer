@@ -451,7 +451,6 @@ class LiliumText extends LiliumBase {
         context.textAlign = 'left';
         context.textBaseline = 'top';
         context.font = this.#font;
-        console.log(context.font);
         for (const s of this.#textContent.split('\n')) {
             if (this.#wrapWidth) {
                 for (let i = 0; i < s.length; i += this.#wrapWidth) {
@@ -503,7 +502,6 @@ class LiliumText extends LiliumBase {
             this.#textContent = value;
             break;
         case 'font':
-            console.log(value);
             this.#font = value;
             break;
         case 'color':

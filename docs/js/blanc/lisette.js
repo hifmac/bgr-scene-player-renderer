@@ -39,7 +39,9 @@
  *     cut_out: string,
  *     next: string[],
  *     id: string,
- *     talk: string
+ *     talk: string,
+ *     bgm: string,
+ *     voice: string,
  * }} Dialog
  * 
  * @typedef {Object.<string, {

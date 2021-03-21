@@ -16,6 +16,8 @@ import {
     makeError,
 } from './blanc/lisette.js';
 
+import * as Claire from './jade/claire.js';
+
 /**
  * @typedef {import('./blanc/lisette.js').Config} Config
  * @typedef {import('./blanc/lisette.js').Dialog} Dialog
@@ -143,8 +145,6 @@ class Replay {
 
         const params = getURLParameter();
 
-        this.#data = this.createData();
-
         window.addEventListener('click', () => this.#data.onClicked());
 
         const receiveAllDialog = () => {
@@ -180,12 +180,11 @@ class Replay {
         .then((config) => {
             this.#config = config;
             this.#widgetCatalog = new Ciffon.WidgetCatalog(this.#config);
+            this.#data = this.createData();
             return receiveAllDialog();
         })
         .then((dialogs) => {
             this.#data.dialogs = dialogs;
-            this.#data.front = this.createCharacter();
-            this.#data.back = this.createCharacter();
             return Promise.all(
                 Array.from(this.#config.json.character, (x) => Filesystem.readJsonFile(x))
             );
@@ -216,6 +215,7 @@ class Replay {
          *     widget: Object,
          *     buttons: string[],
          *     fonts: string[],
+         *     player: Claire.Player,
          *     hasWidget: (name: string) => boolean,
          *     onClicked: () => void,
          *     loadDialog: (dialog_id: string) => void,
@@ -244,8 +244,8 @@ class Replay {
             dialog: null,
             dialogs: null,
             frontCharacter: null,
-            front: null,
-            back: null,
+            front: this.createCharacter(),
+            back: this.createCharacter(),
             erase: false,
             widget: {},
             buttons: [
@@ -256,6 +256,7 @@ class Replay {
                 'scenario-skip',
             ],
             fonts: Ciffon.FONTS,
+            player: new Claire.Player(this.#config),
 
             onClicked: () => {
                 if (data.dialog.next) {
@@ -346,6 +347,14 @@ class Replay {
                 if ('talk' in dialog) {
                     data.talk.text = dialog.talk;
                     this.#lilium.update();
+                }
+
+                if ('bgm' in dialog) {
+                    data.player.play('bgm0', dialog.bgm, true);
+                }
+
+                if ('voice' in dialog) {
+                    data.player.play('voice0', dialog.voice, false);
                 }
             },
 
