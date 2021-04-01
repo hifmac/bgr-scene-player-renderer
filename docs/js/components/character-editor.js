@@ -317,44 +317,44 @@ function calcScore(lower, upper) {
     if (lower.data.byteLength === upper.data.byteLength) {
         let i = lower.data.byteLength | 0;
         while (i & 0x1f) {
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
         }
         while (i) {
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
 
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
 
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
 
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
-            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? (255 - upper.data[i]) : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
+            score += (Math.abs(lower.data[i] - upper.data[i--]) < threshold ? 1 : 0);
         }
     }
     return -score;
@@ -365,9 +365,13 @@ function calcScore(lower, upper) {
  * @param {Nina.LumaData} sample 
  * @param {Nina.LumaData} texture
  * @param {Nina.Rect} rect 
+ * @param {(Nina.Rect|*)} baseRect
  */
-function estimatePosition(sample, texture, rect) {
+function estimatePosition(sample, texture, rect, baseRect) {
     const range = 20;
+
+    const baseImage = baseRect ? texture.subimage(
+        baseRect.x, baseRect.y, baseRect.w, baseRect.h) : null;
 
     /*
      * best estimated position and score
@@ -378,7 +382,17 @@ function estimatePosition(sample, texture, rect) {
         score: null,
     };
     best.image = texture.subimage(best.pos.x, best.pos.y, best.pos.w, best.pos.h);
+    if (baseImage) {
+        if (baseImage.width === best.image.width && baseImage.height === best.image.height) {
+            best.image = baseImage.blend(best.image);
+        }
+        else {
+            best.image = baseImage.subimage(
+                0, 0, best.image.width, best.image.height).blend(best.image);
+        }
+    }
     best.score = calcScore(sample, best.image);
+    // best.image.save(`${best.score}-${rect.x}-${rect.y}.png`);
 
     const nexts = [];
     for (let dx = -range; dx <= range; ++dx) {
@@ -400,9 +414,19 @@ function estimatePosition(sample, texture, rect) {
             w: prev.w,
             h: prev.h,
         };
-        const image = texture.subimage(pos.x, pos.y, pos.w, pos.h);
+        let image = texture.subimage(pos.x, pos.y, pos.w, pos.h);
+        if (baseImage) {
+            if (baseImage.width === image.width && baseImage.height === image.height) {
+                image = baseImage.blend(image);
+            }
+            else {
+                image = baseImage.subimage(
+                    0, 0, image.width, image.height).blend(image);
+            }
+        }    
         const score = calcScore(sample, image);
         if (score < best.score) {
+            // image.save(`${score}-${pos.x}-${pos.y}.png`);
             best = {
                 pos,
                 image,
@@ -900,6 +924,8 @@ function createData(characterEditor) {
             const estimated = estimatePosition(exampleData, lumaImage, example.rect);
             data.renderer.setExample(estimated.pos.x, estimated.pos.y);
 
+            console.log(exampleData);
+            console.log(estimated.pos);
             /*
              * find best face from guides
              */
@@ -913,7 +939,8 @@ function createData(characterEditor) {
                         y: guide.y - (exampleData.height >> 1),
                         w: exampleData.width,
                         h: exampleData.height,
-                    });
+                    },
+                    estimated.pos);
                 faces.push(face);
                 faces.sort((a, b) => {
                     return a.score - b.score;
@@ -1073,10 +1100,10 @@ export default class CharacterEditor {
         this.#adelite = new Adelite(id, template);
         this.#config = config;
         this.#data = createData(this);
-        this.#faceCapturer = new FaceCapturer();
     }
 
     show() {
+        this.#faceCapturer = new FaceCapturer();
         window.addEventListener('mouseup', this.#data.onWindowMouseUp);
         window.addEventListener('keydown', this.#data.onWindowKeyDown);
         window.addEventListener('paste', this.#data.onWindowPaste);
@@ -1116,7 +1143,6 @@ export default class CharacterEditor {
         window.removeEventListener('keydown', this.#data.onWindowKeyDown);
         window.removeEventListener('paste', this.#data.onWindowPaste);
         document.getElementById('background').removeEventListener('dblclick', this.#data.onBackgroundDoubleClick);
-        this.#data = null;
 
         this.#faceCapturer.stop();
         this.#faceCapturer = null;

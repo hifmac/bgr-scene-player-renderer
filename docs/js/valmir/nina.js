@@ -381,29 +381,28 @@ export class LumaData {
     /**
      * @constructor
      * @param {ImageData | Int16Array} imageData 
+     * @param {number[]|*} alpha
      * @param {number|*} width
      * @param {number|*} height
      */
-    constructor(imageData, width, height) {
+    constructor(imageData, alpha, width, height) {
         if (imageData instanceof ImageData) {
             this.data = new Int16Array(imageData.width * imageData.height);
+            this.alpha = new Array(this.data.length);
             this.width = imageData.width;
             this.height = imageData.height;
             for (let i = 0; i < imageData.data.length; i += 4) {
                 const alpha = imageData.data[i + 3] / 255;
-                if (alpha === 0) {
-                    this.data[i >> 2] = -1;
-                }
-                else {
-                    const luma = imageData.data[i] * 0.2126 * alpha
-                        + imageData.data[i + 1] * 0.7152 * alpha
-                        + imageData.data[i + 2] * 0.0722 * alpha;
-                    this.data[i >> 2] = luma | 0;
-                }
+                const luma = imageData.data[i] * 0.2126 * alpha
+                    + imageData.data[i + 1] * 0.7152 * alpha
+                    + imageData.data[i + 2] * 0.0722 * alpha;
+                this.data[i >> 2] = luma | 0;
+                this.alpha[i >> 2] = alpha;
             }
         }
         else if (imageData instanceof Int16Array) {
             this.data = imageData;
+            this.alpha = alpha;
             this.width = width;
             this.height = height;
         }
@@ -432,17 +431,40 @@ export class LumaData {
         }
 
         const data = new Int16Array(w * h);
-        data.fill(-1);
+        const alpha = new Array(w * h);
         for (let dy = 0, sy = y; dy < h; ++dy, ++sy) {
             if (0 <= sy && sy < this.height) {
                 let dx = w * dy;
                 let sx = this.width * sy + x;
                 for (let i = w; i--; ++dx, ++sx) {
                     data[dx] = this.data[sx];
+                    alpha[dx] = this.alpha[sx];
                 }
             }
         }
-        return new LumaData(data, w, h);
+        return new LumaData(data, alpha, w, h);
+    }
+
+    /**
+     * blent this and image
+     * @param {LumaData} image 
+     */
+    blend(image) {
+        if (this.data.length !== image.data.length
+            || this.width !== image.width
+            || this.height !== image.height) {
+            console.log(this);
+            console.log(image);
+            throw makeError(`this and image must be same size`);
+        }
+
+        const data = new Int16Array(this.data.length);
+        const alpha = new Array(this.alpha.length);
+        for (let i = data.length; i--;) {
+            data[i] = this.data[i] * (1 - image.alpha[i]) + image.data[i] * image.alpha[i];
+            alpha[i] = this.alpha[i] * (1 - image.alpha[i]) + image.alpha[i];
+        }
+        return new LumaData(data, alpha, this.width, this.height);
     }
 
     save(filename) {
@@ -453,7 +475,7 @@ export class LumaData {
                 imageData.data[offset    ] = this.data[i];
                 imageData.data[offset + 1] = this.data[i];
                 imageData.data[offset + 2] = this.data[i];
-                imageData.data[offset + 3] = 255;
+                imageData.data[offset + 3] = this.alpha[i] * 255 | 0;
             }
         }
         const canvas = document.createElement('canvas');
