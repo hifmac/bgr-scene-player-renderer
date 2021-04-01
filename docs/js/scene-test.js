@@ -152,34 +152,34 @@ const templateLilium = {
             }
         },
         "sprite#talk": {
-            "if": "{{ hasWidget('scenario-talk-bg') }}",
+            "if": "{{ widgetCatalog.get('scenario-talk-bg').src }}",
             "fill": {
                 "once:color": "rgba(0, 0, 0, 0.7)",
                 "once:rect": "{{ [ 70, 432, 884, 110 ] }}"
             },
             "image": {
-                "once:src": "{{ widget['scenario-talk-bg'].image }}",
-                "once:rect": "{{ widget['scenario-talk-bg'].rect }}"
+                "once:src": "{{ widgetCatalog.get('scenario-talk-bg').src }}",
+                "once:rect": "{{ widgetCatalog.get('scenario-talk-bg').dst }}"
             },
             "text": {
                 "bind:textContent": "{{ talk.text }}",
                 "bind:font": "{{ talk.size }}px \"{{ fonts[talk.font] }}\"",
                 "bind:color":"{{ talk.color }}",
-                "bind:lineHeight": "{{ add(parseInt(talk.size), 2) }}",
+                "bind:lineHeight": "{{ +(parseInt(talk.size), 2) }}",
                 "once:wrapWidth": 40,
                 "once:leftTop": "{{ [ 125, 445 ] }}",
                 "once:border": true,
             }
         },
         "sprite#name": {
-            "if": "{{ hasWidget('scenario-name-bg') }}",
+            "if": "{{ widgetCatalog.get('scenario-name-bg').src }}",
             "fill": {
                 "once:color": "rgba(0, 0, 0, 0.7)",
                 "once:rect": "{{ [ 67, 389, 198, 34 ] }}"
             },
             "image#scenario-name-bg": {
-                "once:src": "{{ widget['scenario-name-bg'].image }}",
-                "once:rect": "{{ widget['scenario-name-bg'].rect }}"
+                "once:src": "{{ widgetCatalog.get('scenario-name-bg').src }}",
+                "once:rect": "{{ widgetCatalog.get('scenario-name-bg').dst }}"
             },
             "text": {
                 "bind:textContent": "{{ name.text }}",
@@ -192,9 +192,9 @@ const templateLilium = {
         "sprite#buttons": {
             "forEach:button": "{{ buttons }}",
             "image": {
-                "if": "{{ hasWidget(button) }}",
-                "once:src": "{{ widget[button].image }}",
-                "once:rect": "{{ widget[button].rect }}"
+                "if": "{{ widgetCatalog.get(button).src }}",
+                "once:src": "{{ widgetCatalog.get(button).src }}",
+                "once:rect": "{{ widgetCatalog.get(button).dst }}"
             },
         }
     }
@@ -235,14 +235,12 @@ class SceneTest {
         this.#adelite = new Adelite('#app', templateAdelite);
         this.#lilium = new Lilium('#sceneTestCanvas', templateLilium);
   
-        this.#data = this.createData();
-
         // load config
         new Promise((resolve) => onLoad((config) => resolve(config)))
         // load dialog and character list
         .then((config) => {
             this.#config = config;
-            this.#widgetCatalog = new Ciffon.WidgetCatalog(this.#config);
+            this.#data = this.createData();
             return Promise.all([
                 Filesystem.readDirectory(this.#config.data.texture.dialog + '/dialog'),
                 ...Array.from(this.#config.json.character, (x) => Filesystem.readJsonFile(x))
@@ -294,11 +292,10 @@ class SceneTest {
          *     frontCharacter: string,
          *     front: CharacterState,
          *     back: CharacterState,
-         *     widget: Object,
          *     buttons: string[],
          *     fonts: string[],
+         *     widgetCatalog: Ciffon.WidgetCatalog,
          *     toggleUI: () => void;
-         *     hasWidget: (name: string) => boolean,
          *     onDialogChanged: (index: number) => void,
          *     onCharacterChanged: (index: number, pos: string) => void,
          *     onFaceChanged: (index: number, pos: string) => void,
@@ -333,7 +330,6 @@ class SceneTest {
             frontCharacter: 'left',
             front: null,
             back: null,
-            widget: {},
             buttons: [
                 'scenario-log',
                 'scenario-auto',
@@ -342,19 +338,8 @@ class SceneTest {
                 'scenario-skip',
             ],
             fonts: Ciffon.FONTS,
+            widgetCatalog: new Ciffon.WidgetCatalog(this.#config),
 
-            hasWidget: (name) => {
-                const ret = (name in data.widget);
-                if (!ret) {
-                    this.#widgetCatalog.load(name)
-                    .then((widget) => {
-                        data.widget[name] = widget;
-                        this.#lilium.update();
-                    })
-                    .catch(printStack);
-                }
-                return ret;
-            },
 
             toggleUI: () => {
                 data.isUIEnabled = !data.isUIEnabled;
@@ -428,7 +413,6 @@ class SceneTest {
         
             onTextChanged: (obj, attr, value) => {
                 obj[attr] = value;
-                console.log(`${data.talk.font} => ${data.fonts[data.talk.font]}, ${data.name.font} => ${data.fonts[data.name.font]}`);
                 this.#lilium.update();
             },
         };
@@ -527,9 +511,6 @@ class SceneTest {
 
     /** @type {Lilium} */
     #lilium = null;
-
-    /** @type {Ciffon.WidgetCatalog} */
-    #widgetCatalog = null;
 
     /**
      * BGRSP config

@@ -170,7 +170,7 @@ export default class WidgetDesigner {
                 });
             }
         });
-    }
+    };
 
     updateCanvas() {
         this.#canvas.width = 1024;

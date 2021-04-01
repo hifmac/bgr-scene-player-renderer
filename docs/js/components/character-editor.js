@@ -194,12 +194,12 @@ const template = {
                 "button.face-dst-position-sub": {
                     "once:type": "button",
                     "once:textContent": "+{{ dst[2] }}",
-                    "on:click": "{{ face.set(dst[1], add(face.get(dst[1]), dst[2])) }}",
+                    "on:click": "{{ face.set(dst[1], +(face.get(dst[1]), dst[2])) }}",
                 },
                 "button.face-dst-position-add": {
                     "once:type": "button",
                     "once:textContent": "-{{ dst[2] }}",
-                    "on:click": "{{ face.set(dst[1], sub(face.get(dst[1]), dst[2])) }}",
+                    "on:click": "{{ face.set(dst[1], -(face.get(dst[1]), dst[2])) }}",
                 }
             },
         },
@@ -221,12 +221,12 @@ const template = {
                 "button.face-src-position-add": {
                     "once:type": "button",
                     "once:textContent": "+{{ src[2] }}",
-                    "on:click": "{{ face.set(src[1], add(face.get(src[1]), src[2])) }}",
+                    "on:click": "{{ face.set(src[1], +(face.get(src[1]), src[2])) }}",
                 },
                 "button.face-src-position-sub": {
                     "once:type": "button",
                     "once:textContent": "-{{ src[2] }}",
-                    "on:click": "{{ face.set(src[1], sub(face.get(src[1]), src[2])) }}",
+                    "on:click": "{{ face.set(src[1], -(face.get(src[1]), src[2])) }}",
                 }
             }
         },
@@ -257,12 +257,12 @@ const template = {
                 "button.body-position-add": {
                     "once:type": "button",
                     "once:textContent": "+{{ src[2] }}",
-                    "on:click": "{{ body.set(src[1], add(body.get(src[1]), src[2])) }}",
+                    "on:click": "{{ body.set(src[1], +(body.get(src[1]), src[2])) }}",
                 },
                 "button.body-position-sub": {
                     "once:type": "button",
                     "once:textContent": "-{{ src[2] }}",
-                    "on:click": "{{ body.set(src[1], sub(body.get(src[1]), src[2])) }}",
+                    "on:click": "{{ body.set(src[1], -(body.get(src[1]), src[2])) }}",
                 }
             }
         },

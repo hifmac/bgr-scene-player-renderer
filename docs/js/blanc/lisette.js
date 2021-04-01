@@ -42,6 +42,7 @@
  *     talk: string,
  *     bgm: string,
  *     voice: string,
+ *     option: string[],
  * }} Dialog
  * 
  * @typedef {Object.<string, {

@@ -232,7 +232,7 @@ export class View {
 
             return () => {
                 const iterator = this.#forEach.list(contextStack);
-                if (cache.iterator === iterator && cache.iterator.length === iterator.length) {
+                if (cache.iterator === iterator && cache.iterator.length === cache.conditions.length) {
                     for (const i in cache.conditions) { 
                         if (cache.conditions[i] !== this.#condition(cache.contexts[i])) {
                             cache.conditions = Array(cache.contexts, (ctx) => this.#condition(ctx));

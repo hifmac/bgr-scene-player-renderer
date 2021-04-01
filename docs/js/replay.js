@@ -31,6 +31,7 @@ import * as Nina from './valmir/nina.js';
 const template = {
     "sprite": {
         "once:rect": "{{ [ 0, 0, 1024, 576 ] }}",
+        "on:click": "{{ onClicked() }}",
         "fill": {
             "once:color": "rgb(0, 0, 0)",
             "once:rect": "{{ [ 0, 0, 1024, 576 ] }}"
@@ -61,14 +62,14 @@ const template = {
             }
         },
         "sprite#talk": {
-            "if": "{{ hasWidget('scenario-talk-bg') }}",
+            "if": "{{ widgetCatalog.get('scenario-talk-bg').src }}",
             "fill": {
                 "once:color": "rgba(0, 0, 0, 0.7)",
                 "once:rect": "{{ [ 70, 432, 884, 110 ] }}"
             },
             "image": {
-                "once:src": "{{ widget['scenario-talk-bg'].image }}",
-                "once:rect": "{{ widget['scenario-talk-bg'].rect }}"
+                "once:src": "{{ widgetCatalog.get('scenario-talk-bg').src }}",
+                "once:rect": "{{ widgetCatalog.get('scenario-talk-bg').dst }}"
             },
             "text": {
                 "bind:textContent": "{{ talk.text }}",
@@ -81,14 +82,14 @@ const template = {
             }
         },
         "sprite#name": {
-            "if": "{{ hasWidget('scenario-name-bg') }}",
+            "if": "{{ widgetCatalog.get('scenario-name-bg').src }}",
             "fill": {
                 "once:color": "rgba(0, 0, 0, 0.7)",
                 "once:rect": "{{ [ 67, 389, 198, 34 ] }}"
             },
             "image#scenario-name-bg": {
-                "once:src": "{{ widget['scenario-name-bg'].image }}",
-                "once:rect": "{{ widget['scenario-name-bg'].rect }}"
+                "once:src": "{{ widgetCatalog.get('scenario-name-bg').src }}",
+                "once:rect": "{{ widgetCatalog.get('scenario-name-bg').dst }}",
             },
             "text": {
                 "bind:textContent": "{{ name.text }}",
@@ -99,11 +100,30 @@ const template = {
             }
         },
         "sprite#buttons": {
-            "forEach:button": "{{ buttons }}",
-            "image": {
-                "if": "{{ hasWidget(button) }}",
-                "once:src": "{{ widget[button].image }}",
-                "once:rect": "{{ widget[button].rect }}"
+            "button": {
+                "forEach:button": "{{ buttons }}",
+                "bind:src": "{{ widgetCatalog.get(button.normal).src }}",
+                "bind:rect": "{{ widgetCatalog.get(button.normal).dst }}",
+                "bind:src-hover": "{{ widgetCatalog.get(button.hover).src }}",
+                "bind:rect-hover": "{{ widgetCatalog.get(button.hover).dst }}",
+                "bind:src-active": "{{ widgetCatalog.get(button.active).src }}",
+                "bind:rect-active": "{{ widgetCatalog.get(button.active).dst }}",
+                "on:click": "{{ button.onClicked() }}"
+            }
+        },
+        "sprite#2choices": {
+            "if": "{{ hasTwoChoiceOption() }}",
+            "once:rect": "{{ [ 0, 0, 1024, 576 ] }}",
+            "on:click": "{{ onClickIgnored() }}",
+            "button": {
+                "forEach:choice": "{{ twoChoices }}",
+                "bind:src": "{{ widgetCatalog.get(choice.normal).src }}",
+                "bind:rect": "{{ widgetCatalog.get(choice.normal).dst }}",
+                "bind:src-hover": "{{ widgetCatalog.get(choice.hover).src }}",
+                "bind:rect-hover": "{{ widgetCatalog.get(choice.hover).dst }}",
+                "bind:src-active": "{{ widgetCatalog.get(choice.active).src }}",
+                "bind:rect-active": "{{ widgetCatalog.get(choice.active).dst }}",
+                "on:click": "{{ choice.onClicked() }}"
             },
         }
     }
@@ -145,8 +165,6 @@ class Replay {
 
         const params = getURLParameter();
 
-        window.addEventListener('click', () => this.#data.onClicked());
-
         const receiveAllDialog = () => {
             /** @type {Object.<string, Dialog>} */
             const dialogs = {};
@@ -162,7 +180,8 @@ class Replay {
                             if (!(next in dialogs)) {
                                 dialogs[next] = null;
                                 IPC.requestDialog(next)
-                                    .then(receiveDialog).catch(reject);
+                                    .then(receiveDialog)
+                                    .catch(reject);
                             }
                         }
                     }
@@ -170,7 +189,8 @@ class Replay {
     
                 dialogs[params.v] = null;
                 IPC.requestDialog(params.v)
-                    .then(receiveDialog).catch(reject);
+                    .then(receiveDialog)
+                    .catch(reject);
             });
         };
 
@@ -179,11 +199,13 @@ class Replay {
         // load dialog and character list
         .then((config) => {
             this.#config = config;
-            this.#widgetCatalog = new Ciffon.WidgetCatalog(this.#config);
-            this.#data = this.createData();
             return receiveAllDialog();
         })
         .then((dialogs) => {
+            this.#data = this.createData();
+            this.#data.widgetCatalog.addEventListener('load', () => {
+                this.#lilium.update();
+            });
             this.#data.dialogs = dialogs;
             return Promise.all(
                 Array.from(this.#config.json.character, (x) => Filesystem.readJsonFile(x))
@@ -212,28 +234,37 @@ class Replay {
          *     front: CharacterState,
          *     back: CharacterState,
          *     erase: boolean,
-         *     widget: Object,
-         *     buttons: string[],
+         *     buttons: {
+         *          normal: string,
+         *          hover: string,
+         *          active: string,
+         *          onClicked: () => void
+         *     }[],
+         *     twoChoices: {
+         *          normal: string,
+         *          hover: string,
+         *          active: string,
+         *          onClicked: () => void
+         *     }[],
          *     fonts: string[],
          *     player: Claire.Player,
-         *     hasWidget: (name: string) => boolean,
+         *     widgetCatalog: Ciffon.WidgetCatalog,
+         *     hasTwoChoiceOption: () => boolean,
+         *     hasFourChoiceOption: () => boolean,
          *     onClicked: () => void,
+         *     onClickIgnored: () => void,
          *     loadDialog: (dialog_id: string) => void,
          * }}
          */
         const data = {
             background: null,
             name: {
-                label: '名前：',
-                placeholder: 'リリウム',
                 text: '',
                 font: 'メイリオ',
                 size: 16,
                 color: '#ffffff',
             },
             talk: {
-                label: '台詞：',
-                placeholder: 'あなたの相棒、リリウムよ',
                 text: '',
                 fonr: 'メイリオ',
                 size: 18,
@@ -247,32 +278,122 @@ class Replay {
             front: this.createCharacter(),
             back: this.createCharacter(),
             erase: false,
-            widget: {},
+
             buttons: [
-                'scenario-log',
-                'scenario-auto',
-                'scenario-option',
-                'scenario-minimize',
-                'scenario-skip',
+                {
+                    normal: 'scenario-log',
+                    hover: 'scenario-log-hover',
+                    active: 'scenario-log-active',
+                    onClicked(event) {
+                        alert(event);
+                    }
+                },
+                {
+                    normal: 'scenario-auto',
+                    hover: 'scenario-auto',
+                    active: 'scenario-auto',
+                    onClicked(event) {
+                        alert(event);
+                    }
+                },
+                {
+                    normal: 'scenario-option',
+                    hover: 'scenario-option-hover',
+                    active: 'scenario-option-active',
+                    onClicked(event) {
+                        alert(event);
+                    }
+                },
+                {
+                    normal: 'scenario-minimize',
+                    hover: 'scenario-minimize-hover',
+                    active: 'scenario-minimize-active',
+                    onClicked(event) {
+                        alert(event);
+                    }
+                },
+                {
+                    normal: 'scenario-skip',
+                    hover: 'scenario-skip-hover',
+                    active: 'scenario-skip-active',
+                    onClicked(event) {
+                        alert(event);
+                    }
+                },
             ],
+
+            twoChoices: [
+                {
+                    normal: 'quesion-ok',
+                    hover: 'quesion-ok-hover',
+                    active: 'quesion-ok-active',
+                    onClicked() {
+                        const pos = data.dialog.option.indexOf('〇');
+                        if (pos === -1) {
+                            if (confirm('終了しますか？')) {
+                                window.close();
+                            }
+                        }
+                        else {
+                            if (pos < data.dialog.next.length) {
+                                data.loadDialog(data.dialog.next[pos]);
+                            }
+                        }
+                    }
+                },
+                {
+                    normal: 'quesion-ng',
+                    hover: 'quesion-ng-hover',
+                    active: 'quesion-ng-active',
+                    onClicked() {
+                        const pos = data.dialog.option.indexOf('×');
+                        if (pos === -1) {
+                            if (confirm('終了しますか？')) {
+                                window.close();
+                            }
+                        }
+                        else {
+                            if (pos < data.dialog.next.length) {
+                                data.loadDialog(data.dialog.next[pos]);
+                            }
+                        }
+                    }
+                }
+            ],
+
             fonts: Ciffon.FONTS,
             player: new Claire.Player(this.#config),
+            widgetCatalog: new Ciffon.WidgetCatalog(this.#config),
+
+            hasTwoChoiceOption: () => {
+                return data.dialog && data.dialog.option && data.dialog.option.length == 2;
+            },
+
+            hasFourChoiceOption: () => {
+                return data.dialog && data.dialog.option && data.dialog.option.length == 4;
+            },
 
             onClicked: () => {
                 if (data.dialog.next) {
                     data.loadDialog(data.dialog.next[0]);
                 }
+                else {
+                    if (confirm('終了しますか？')) {
+                        window.close();
+                    }
+                }
             },
+
+            onClickIgnored: () => {},
 
             loadDialog: (dialog_id) => {
                 const dialog = data.dialog = data.dialogs[dialog_id];
 
                 if (data.erase) {
-                    data.front = null;
-                    data.back = null;
+                    data.front = this.createCharacter();
+                    data.back = this.createCharacter();
                 }
-                data.erase = 'erase' in dialog;
-
+                data.erase = 'erace' in dialog;
 
                 if (data.frontCharacter !== (dialog.pos || null)) {
                     data.frontCharacter = (dialog.pos || null);
@@ -356,20 +477,7 @@ class Replay {
                 if ('voice' in dialog) {
                     data.player.play('voice0', dialog.voice, false);
                 }
-            },
-
-            hasWidget: (name) => {
-                const ret = (name in data.widget);
-                if (!ret) {
-                    this.#widgetCatalog.load(name)
-                    .then((widget) => {
-                        data.widget[name] = widget;
-                        this.#lilium.update();
-                    })
-                    .catch(printStack);
-                }
-                return ret;
-            },
+            }
         };
         return data;
     }
@@ -459,13 +567,11 @@ class Replay {
         return ret;
     }
 
-    #data;
+    /** @type {any} */
+    #data = null;
 
     /** @type {Lilium} */
     #lilium = null;
-
-    /** @type {Ciffon.WidgetCatalog} */
-    #widgetCatalog = null;
 
     /** @type {Config} */
     #config = null;

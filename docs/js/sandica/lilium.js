@@ -54,6 +54,7 @@ class LiliumBase {
     constructor(id) {
         this.#id = id;
         this.#listeners = {};
+        this.#state = new Set();
     }
 
     /**
@@ -69,7 +70,7 @@ class LiliumBase {
      * @param {string} name 
      */
     getAttribute(name) {
-        throw makeError(`${this.type} doesn't implement attribute getter`);
+        throw makeError(`${this.type} doesn't implement attribute getter for ${name}`);
     }
 
     /**
@@ -78,7 +79,7 @@ class LiliumBase {
      * @param {any} value 
      */
     setAttribute(name, value) {
-        throw makeError(`${this.type} doesn't implement attribute setter`);
+        throw makeError(`${this.type} doesn't implement attribute setter for ${name}`);
     }
 
     /**
@@ -100,8 +101,10 @@ class LiliumBase {
      * @param {LiliumEvent} event 
      */
     dispatchEvent(event) {
-        for (const listener of this.#listeners[event.name]) {
-            listener(event);
+        if (event.name in this.#listeners) {
+            for (const listener of this.#listeners[event.name]) {
+                listener(event);
+            }
         }
     }
 
@@ -128,6 +131,16 @@ class LiliumBase {
         throw makeError(`${this.type} doesn't support child`);
     }
 
+    /**
+     * @param {{
+     *     x: number,
+     *     y: number
+     * }} event
+     */
+    isIncluding(event) {
+        return false;
+    }
+
     get type() {
         return 'base';
     }
@@ -136,10 +149,20 @@ class LiliumBase {
         return this.#id;
     }
 
+    get state() {
+        return this.#state;
+    }
+
+    static HOVER = 0;
+    static HOLD = 1;
+
     #id = null;
 
     /** @type {Object.<string, LiliumEventListener[]>} */
     #listeners = null;
+
+    /** @type {Set<number>} */
+    #state = null;
 }
 
 class LiliumSprite extends LiliumBase {
@@ -223,6 +246,11 @@ class LiliumSprite extends LiliumBase {
      */
     clearChildren() {
         this.#children =[];
+    }
+
+    isIncluding(event) {
+        return (this.#rect[0] <= event.x && event.x < this.#rect[0] + this.#rect[2]
+            && this.#rect[1] <= event.y && event.y < this.#rect[1] + this.#rect[3]);
     }
 
     get type() {
@@ -401,6 +429,14 @@ class LiliumImage extends LiliumBase {
         }
     }
 
+    get src() {
+        return this.#src;
+    }
+
+    get dstRect() {
+        return this.#dstRect;
+    }
+
     get type() {
         return 'image';
     }
@@ -556,6 +592,104 @@ class LiliumText extends LiliumBase {
     #border = false;
 }
 
+class LiliumButton extends LiliumBase {
+    constructor(id) {
+        super(id);
+        this.normal = new LiliumImage(id ? `${id}-normal` : null);
+        this.hover = new LiliumImage(id ? `${id}-hover` : null);
+        this.active = new LiliumImage(id ? `${id}-active` : null);
+    }
+
+    /**
+     * draw
+     * @param {CanvasRenderingContext2D} context
+     */
+    draw(context) {
+        this.getImageByState().draw(context);
+    }
+
+    /**
+     * get attribute
+     * @param {string} name 
+     */
+    getAttribute(name) {
+        return this.getImageByAttribute(name, (image, name) => {
+            return image.getAttribute(name);
+        });
+    }
+
+    /**
+     * set attibute
+     * @param {string} name 
+     * @param {any} value 
+     */
+    setAttribute(name, value) {
+        this.getImageByAttribute(name, (image, name) => {
+            image.setAttribute(name, value);
+        });
+    }
+
+    /**
+     * an event is included by this component
+     * @param {PointerEvent} event 
+     * @returns {boolean}
+     */
+    isIncluding(event) {
+        const image = this.getImageByState();
+        return (image.dstRect
+            && image.dstRect[0] <= event.x && event.x < image.dstRect[0] + image.dstRect[2]
+            && image.dstRect[1] <= event.y && event.y < image.dstRect[1] + image.dstRect[3]);
+    }
+
+    getImageByState() {
+        if (this.state.has(LiliumBase.HOVER)) {
+            if (this.state.has(LiliumBase.HOLD)) {
+                return this.active;
+            }
+            else {
+                return this.hover;                
+            }
+        }
+
+        return this.normal;
+    }
+
+    /**
+     * @template T
+     * @param {string} name 
+     * @param {(image: LiliumImage, name: string) => T} callback 
+     * @returns {T}
+     */
+    getImageByAttribute(name, callback) {
+        if (name.endsWith(LiliumButton.SUFFIX_ACTIVE)) {
+            return callback(this.active, name.substring(0, name.length - LiliumButton.SUFFIX_ACTIVE.length));
+        }
+        else if (name.endsWith(LiliumButton.SUFFIX_HOVER)) {
+            return callback(this.hover, name.substring(0, name.length - LiliumButton.SUFFIX_HOVER.length));
+        }
+        else {
+            return callback(this.normal, name);
+        }
+    }
+
+    get type() {
+        return 'button';
+    }
+
+    /** @type {LiliumImage} */
+    normal = null;
+
+    /** @type {LiliumImage} */
+    hover = null;
+
+    /** @type {LiliumImage} */
+    active = null;
+
+    static SUFFIX_ACTIVE = '-active';
+
+    static SUFFIX_HOVER = '-hover';
+}
+
 /**
  * @class Lilium Canvas Component
  * @extends {Chescarna.Component}
@@ -572,9 +706,6 @@ class Component extends Chescarna.Component {
         this.#children = [];
         this.#element = element;
         this.#elementDict = elementDict;
-        if (this.#element.id) {
-            elementDict[this.#element.id] = this.#element;
-        }
     }
 
     /**
@@ -611,6 +742,9 @@ class Component extends Chescarna.Component {
     appendChild(component) {
         this.#element.appendChild(component.element);
         this.#children.push(component);
+        if (this.#element.id) {
+            this.#elementDict[this.#element.id] = this.#element;
+        }
     }
     
     /**
@@ -618,13 +752,11 @@ class Component extends Chescarna.Component {
      * @param {Component} component 
      */
     removeChild(component) {
+        if (this.#elementDict[component.element.id] === component.element) {
+            delete this.#elementDict[component.element.id];
+        }
         this.#element.removeChild(component.element);
         this.#children = this.#children.filter((x) => x != component);
-        if (component.element.id && component.element.id in this.#elementDict) {
-            if (this.#elementDict[component.element.id] === component.element) {
-                delete this.#elementDict[component.element.id];
-            }
-        }
     }
     
     /**
@@ -632,14 +764,31 @@ class Component extends Chescarna.Component {
      */
     clearChild() {
         for (const child of this.#children) {
-            if (child.element.id && child.element.id in this.#elementDict) {
-                if (this.#elementDict[child.element.id] === child.element) {
-                    delete this.#elementDict[child.element.id];
-                }
+            if (this.#elementDict[child.element.id] === child.element) {
+                delete this.#elementDict[child.element.id];
             }
         }
         this.#element.clearChildren();
         this.#children = [];
+    }
+
+    /**
+     * @param {LiliumPointerEvent} event 
+     * @returns {boolean}
+     */
+    onPointerEvent(event) {
+        for (const child of this.#children) {
+            if (child.onPointerEvent(event)) {
+                return true;
+            }
+        }
+
+        if (this.#element.isIncluding(event)) {
+            event.register(this);
+            return true;
+        }
+
+        return false;
     }
 
     get element() {
@@ -660,6 +809,117 @@ class Component extends Chescarna.Component {
     #children = null;
 }
 
+class LiliumPointerEvent {
+    constructor() {
+        this.#history = [];
+    }
+
+    /**
+     * @param {PointerEvent} event 
+     */
+    push(event) {
+        this.#history.push(event);
+        while (100 < this.#history.length) {
+            this.#history.shift();
+        }
+        this.#update = false;
+    }
+
+    register(component) {
+        switch (this.pointerEvent.type) {
+        case 'pointerup':
+            this.set(component, LiliumBase.HOVER, LiliumBase.HOLD);
+            break;
+
+        case 'pointerdown':
+            this.set(component, LiliumBase.HOLD);
+            break;
+
+        case 'pointermove':
+        case 'pointerout':
+            this.set(component, LiliumBase.HOVER);
+            break;
+
+        default:
+            throw makeError(`Unknown pointer event: ${this.pointerEvent.type}`);
+        }
+    }
+
+    /**
+     * set event handler
+     * @param {Component} component 
+     * @param {(LiliumBase.HOLD|LiliumBase.HOVER)} stateAdd
+     * @param {(LiliumBase.HOLD|LiliumBase.HOVER|*)} stateDelete
+     */
+    set(component, stateAdd, stateDelete) {
+        if (this.#handler === null) {
+            this.#handler = component;
+        }
+        else if (this.#handler !== component) {
+            const state = this.#handler.element.state;
+
+            /* ignore during drug */
+            if (state.has(LiliumBase.HOLD)) {
+                if (state.has(LiliumBase.HOVER)) {
+                    state.delete(LiliumBase.HOVER);
+                    this.#update = true;
+                }
+                return ;
+            }
+
+            if (state.size) { 
+                state.clear();
+                this.#update = true;
+            }
+            this.#handler = component;
+        }
+        else {
+            /* pass */
+        }
+
+        if (this.#handler) {
+            const state = this.#handler.element.state;
+            if (typeof stateDelete === 'number' && state.has(stateDelete)) {
+                if (stateDelete === LiliumBase.HOLD && state.has(LiliumBase.HOVER)) { 
+                    this.#handler.element.dispatchEvent(new LiliumEvent('click', this.#handler));
+                }
+                state.delete(stateDelete);
+                this.#update = true;    
+            }
+
+            if (typeof stateAdd === 'number' && !state.has(stateAdd)) {
+                state.add(stateAdd);
+                this.#update = true;
+            }
+        }
+    }
+
+    get x() {
+        return this.pointerEvent.x;
+    }
+
+    get y() {
+        return this.pointerEvent.y;
+    }
+
+    get update() {
+        return this.#update;
+    }
+
+    get pointerEvent() {
+        return this.#history[this.#history.length - 1];
+    }
+
+    /** @type {Component} */
+    #handler = null
+
+    /** @type {PointerEvent[]} */
+    #history = null;
+
+    /** @type {boolean} */
+    #update = false;
+}
+
 /**
  * @class Lilium the Best Girl
  */
@@ -671,6 +931,17 @@ export default class Lilium {
      */
     constructor(id, template) {
         this.#view = new Chescarna.View(id, template);
+        this.#pointerEventListener = (event) => {
+            if (this.#component) {
+                this.#pointerEvent.push(event);
+                if (!this.#component.onPointerEvent(this.#pointerEvent)) {
+                    this.#pointerEvent.register(null);
+                }
+                if (this.#pointerEvent.update) {
+                    this.update();
+                }
+            }
+        };
     }
 
     /**
@@ -679,10 +950,11 @@ export default class Lilium {
      */
     show(context) {
         this.#elementDict = {};
+        this.#pointerEvent = new LiliumPointerEvent();
+
         const component = this.#view.buildComponent(
             [ context, this.#elementDict ],
             (tagName) => this.createComponent(tagName));
-
         if (component instanceof Component) {
             this.#component = component;
             return Chescarna.update(this.#component);
@@ -692,6 +964,7 @@ export default class Lilium {
     }
 
     render() {
+        this.#updateOnce = false;
         this.#component.element.draw(this.#context);            
     }
 
@@ -699,16 +972,27 @@ export default class Lilium {
      * update this view
      */
     update() {
-        return Chescarna.update(this.#component).then(() => this.render());
+        if (!this.#updateOnce) {
+            this.#updateOnce = true;
+            return Chescarna.update(this.#component).then(() => this.render());
+        }
     }
 
     /**
      * destroy this view
      */
     destroy() {
+        this.#canvas.removeEventListener('pointermove', this.#pointerEventListener);
+        this.#canvas.removeEventListener('pointerdown', this.#pointerEventListener);
+        this.#canvas.removeEventListener('pointerup', this.#pointerEventListener);
+        this.#canvas.removeEventListener('pointerout', this.#pointerEventListener);
+        this.#canvas = null;
+        this.#context = null;
+
         Chescarna.cancelUpdate(this.#component);
         this.#component = null;
         this.#elementDict = null;
+        this.#pointerEvent = null;
     }
 
     createElement(tagName) {
@@ -723,6 +1007,8 @@ export default class Lilium {
                 return new LiliumFill(parsed.id);
             case 'text': 
                 return new LiliumText(parsed.id);
+            case 'button': 
+                return new LiliumButton(parsed.id);
             default:
                 throw makeError(`${tagName} is not effective tag for Lilium`);
             }       
@@ -731,6 +1017,12 @@ export default class Lilium {
             //@ts-ignore assign HTMLElement to HTMLCanvasElement
             this.#canvas = document.getElementById(parsed.id);
             this.#context = this.#canvas.getContext('2d');
+
+            this.#canvas.addEventListener('pointermove', this.#pointerEventListener);
+            this.#canvas.addEventListener('pointerdown', this.#pointerEventListener);
+            this.#canvas.addEventListener('pointerup', this.#pointerEventListener);
+            this.#canvas.addEventListener('pointerout', this.#pointerEventListener);
+
             return new LiliumSprite(parsed.id);
         }
     }
@@ -748,6 +1040,11 @@ export default class Lilium {
         return this.#elementDict[id];
     }
 
+    /** @type {LiliumPointerEvent} */
+    #pointerEvent = null;
+
+    #updateOnce = false;
+
     /** @type {Chescarna.View} */
     #view = null;
 
@@ -762,4 +1059,7 @@ export default class Lilium {
 
     /** @type {CanvasRenderingContext2D} */
     #context = null;
+
+    /** @type {(PointerEvent) => any} */
+    #pointerEventListener = null;
 }

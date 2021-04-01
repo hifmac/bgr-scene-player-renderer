@@ -10,7 +10,7 @@
 import {
     last,
     makeError,
-    SETTINGS
+    printStack
 } from '../blanc/lisette.js';
 
 /**
@@ -22,17 +22,23 @@ import {
  *     index?: Token[],
  *     args?: Token[][]
  * }} Token
+ *
+ * @typedef {{
+ *     value: any,
+ *     set: function(any): any
+ * }} Variable
  */
+
 
  /**
  * RegExp to test string able to be an operand
  */
-const canBeOperand = /^([_a-zA-Z][_a-zA-Z0-9]*|[0-9+\-][0-9]*(\.[0-9]*)?)$/;
+const canBeOperand = /^([&|^+\-*/%=!?<>]{1,2}|[_a-zA-Z][_a-zA-Z0-9]*|[0-9+\-][0-9]*(\.[0-9]*)?)$/;
 
 /**
  * RegExp to test symbol name
  */
-const isSymbol = /^[_a-zA-Z][_a-zA-Z0-9]*$/;
+const isSymbol = /^([&|^+\-*/%=!?<>]{1,2}|[_a-zA-Z]([_a-zA-Z0-9])*)$/;
 
 /**
  * RegExp to test integer
@@ -86,7 +92,7 @@ const BUILTIN_OBJECT = {
      * @param {any} b right hand side value
      * @returns {any} addition result
      */
-    add(a, b) {
+    '+': function(a, b) {
         return a + b;
     },
 
@@ -96,7 +102,7 @@ const BUILTIN_OBJECT = {
      * @param {any} b right hand side value
      * @returns {any} subtract result
      */
-    sub(a, b) {
+    '-': function(a, b) {
         return a - b;
     },
 
@@ -106,7 +112,7 @@ const BUILTIN_OBJECT = {
      * @param {any} b right hand side value
      * @returns {any} multiple result
      */
-    mul(a, b) {
+    '*': function(a, b) {
         return a * b;
     },
 
@@ -116,10 +122,9 @@ const BUILTIN_OBJECT = {
      * @param {any} b right hand side value
      * @returns {any} division result
      */
-    div(a, b) {
+    '/': function(a, b) {
         return a / b;
     },
-
 
     /**
      * mod two values
@@ -127,11 +132,55 @@ const BUILTIN_OBJECT = {
      * @param {any} b right hand side value
      * @returns {any} modular result
      */
-    mod(a, b) {
+    '%': function(a, b) {
         return a % b;
     },
 
-    not(value) {
+    '||': function(a, b) {
+        return a || b;
+    },
+
+    '&&': function(a, b) {
+        return a && b;
+    },
+
+    '//': function(a, b) {
+        return a / b | 0;
+    },
+
+    '|': function(a, b) {
+        return a || b;
+    },
+
+    '&': function(a, b) {
+        return a && b;
+    },
+
+    '^': function(a, b) {
+        return a ^ b;
+    },
+
+    '<': function(a, b) {
+        return a < b;
+    },
+
+    '>': function(a, b) {
+        return a > b;
+    },
+
+    '<<': function(a, b) {
+        return a << b;
+    },
+
+    '>>': function(a, b) {
+        return a >> b;
+    },
+
+    '?': function(a, b, c) {
+        return a ? b : c;
+    },
+
+    '!': function(value) {
         return !value;
     },
 
@@ -147,6 +196,117 @@ const BUILTIN_OBJECT = {
     }
 };
 
+const ASSIGNMENT_OPERATOR = {
+    /**
+    * assignment operator
+    * @param {Variable[]} variables 
+    */
+    '=': function(variables) {
+        if (variables.length != 2) {
+            throw makeError(`Invalid argument length for 2 operator: ${variables.length}`);
+        }
+        return variables[0].set(variables[1].value);
+    },
+
+    /**
+    * addition assignment operator
+    * @param {Variable[]} variables 
+    */
+    '+=': function(variables) {
+        if (variables.length != 2) {
+            throw makeError(`Invalid argument length for 2 operator: ${variables.length}`);
+        }
+        return variables[0].set(variables[0].value + variables[1].value);
+    },
+
+    /**
+    * substruct assignment operator
+    * @param {Variable[]} variables 
+    */
+    '-=': function(variables) {
+        if (variables.length != 2) {
+            throw makeError(`Invalid argument length for 2 operator: ${variables.length}`);
+        }
+        return variables[0].set(variables[0].value - variables[1].value);
+    },
+
+    /**
+     * Multiple assignment operator
+     * @param {Variable[]} variables 
+     */
+    '*=': function(variables) {
+        if (variables.length != 2) {
+            throw makeError(`Invalid argument length for 2 operator: ${variables.length}`);
+        }
+        return variables[0].set(variables[0].value / variables[1].value);
+    },
+
+    /**
+     * Division assignment operator
+     * @param {Variable[]} variables 
+     */
+    '/=': function(variables) {
+        if (variables.length != 2) {
+            throw makeError(`Invalid argument length for 2 operator: ${variables.length}`);
+        }
+        return variables[0].set(variables[0].value / variables[1].value);
+    },
+
+    /**
+     * Modular assignment operator
+     * @param {Variable[]} variables 
+     */
+    '%=': function(variables) {
+        if (variables.length != 2) {
+            throw makeError(`Invalid argument length for 2 operator: ${variables.length}`);
+        }
+        return variables[0].set(variables[0].value % variables[1].value);
+    },
+
+    /**
+     * bit or assignment operator
+     * @param {Variable[]} variables 
+     */
+    '|=': function(variables) {
+        if (variables.length != 2) {
+            throw makeError(`Invalid argument length for 2 operator: ${variables.length}`);
+        }
+        return variables[0].set(variables[0].value | variables[1].value);
+    },
+
+    /**
+     * bit and assignment operator
+     * @param {Variable[]} variables 
+     */
+    '&=': function(variables) {
+        if (variables.length != 2) {
+            throw makeError(`Invalid argument length for 2 operator: ${variables.length}`);
+        }
+        return variables[0].set(variables[0].value & variables[1].value);
+    },
+
+    /**
+     * increment operator
+     * @param {Variable[]} variables 
+     */
+    '++': function(variables) {
+        if (variables.length != 1) {
+            throw makeError(`Invalid argument length for 1 operator: ${variables.length}`);
+        }
+        return variables[0].set(variables[0].value + 1);
+    },
+
+    /**
+     * decrement operator
+     * @param {Variable[]} variables 
+     */
+    '--': function(variables) {
+        if (variables.length != 1) {
+            throw makeError(`Invalid argument length for 1 operator: ${variables.length}`);
+        }
+        return variables[0].set(variables[0].value + 1);
+    },
+};
 
 /**
  * @class multi level token stack
@@ -267,7 +427,7 @@ function stringToToken(string) {
     const tokens = [];
     let token = '';
     let stringSequence = false;
-    for (let char of string) {
+    for (const char of string) {
         if (stringSequence) {
             if (char === '\'') {
                 tokens.push({
@@ -451,111 +611,186 @@ function parse(string) {
 
 /**
  * compile Chescarna tokens
- * @param {Token[]} tokens
- * @returns {function(Object[]): Object} resolver function
+ * @param {Token[]} tokens token list
+ * @returns {function(any[]): Variable} resolver function
  */
  function compileTokens(tokens) {
-    /** @type {function(Object[]): Object[]} */
+    /**
+     * @type {function(any[]): {
+     *     stack: any[],
+     *     set: function(any): any
+     * }}
+     */
     let resolver = null;
 
+    const lastToken = last(tokens);
     for (const token of tokens) {
         switch (token.type) {
         case TOKEN_SYMBOL:
             if (resolver) {
                 const currentResolver = resolver;
                 resolver = (contextStack) => {
-                    const stack = currentResolver(contextStack);
-                    stack.push(last(stack)[token.name]);
-                    return stack;
+                    const state = currentResolver(contextStack);
+                    state.stack.push(last(state.stack)[token.name]);
+                    if (token === lastToken) {
+                        const context = last(state.stack, 1);
+                        state.set = (value) => {
+                            return (context[token.name] = value);
+                        }
+                    }
+                    return state;
                 };
             }
             else {
                 resolver = (contextStack) => {
                     for (const context of contextStack) {
                         if (token.name in context) {
-                            return [
-                                context,
-                                context[token.name],
-                            ];
+                            const state = {
+                                stack: [
+                                    context,
+                                    context[token.name],
+                                ],
+                                set: null
+                            };
+                            if (token === lastToken) {
+                                state.set = (value) => {
+                                    return (context[token.name] = value);
+                                }
+                            }
+                            return state;
                         }
                     }
 
-                    if (token.name in BUILTIN_OBJECT) {
-                        return [
-                            BUILTIN_OBJECT,
-                            BUILTIN_OBJECT[token.name]
-                        ];
+                    for (const context of [ ASSIGNMENT_OPERATOR, BUILTIN_OBJECT ]) {
+                        if (token.name in context) {
+                            const state = {
+                                stack: [
+                                    context,
+                                    context[token.name]
+                                ],
+                                set: null
+                            };
+                            if (token === lastToken) {
+                                state.set = (value) => {
+                                    return (context[token.name] = value);
+                                }
+                            }
+                            return state;
+                        }
                     }
 
                     throw makeError(`${token.name} is undefined`);
                 };
             }
             break;
+
         case TOKEN_INTEGER: {
             const intValue = parseInt(token.value);
             if (resolver) {
                 const currentResolver = resolver;
                 resolver = (contextStack) => {
-                    const stack = currentResolver(contextStack);
-                    stack.push(last(stack)[intValue]);
-                    return stack;
+                    const state = currentResolver(contextStack);
+                    state.stack.push(last(state.stack)[intValue]);
+                    return state;
                 };
             }
             else {
-                resolver = () => [ intValue ];
+                resolver = () => {
+                    return {
+                        stack: [ intValue ],
+                        set: null
+                    };
+                };
             }
         }   break;
+
         case TOKEN_FLOAT: {
             const floatValue = parseFloat(token.value);
             if (resolver) {
                 const currentResolver = resolver;
                 resolver = (contextStack) => {
-                    const stack = currentResolver(contextStack);
-                    stack.push(last(stack)[floatValue]);
-                    return stack;
+                    const state = currentResolver(contextStack);
+                    state.stack.push(last(state.stack)[floatValue]);
+                    return state;
                 };
             }
             else {
-                resolver = () => [ floatValue ];
+                resolver = () => {
+                    return {
+                        stack: [ floatValue ],
+                        set: null,
+                    };
+                };
             }
         }   break;
+
         case TOKEN_STRING:
             if (resolver) {
                 const currentResolver = resolver;
                 resolver = (contextStack) => {
-                    const stack = currentResolver(contextStack);
-                    stack.push(last(stack)[token.value]);
-                    return stack;
+                    const state = currentResolver(contextStack);
+                    state.stack.push(last(state.stack)[token.value]);
+                    return state;
                 };
             }
             else {
-                resolver = () => [ token.value ];
+                resolver = () => {
+                    return {
+                        stack: [ token.value ],
+                        set: null
+                    };
+                };
             }
             break;
+
         case TOKEN_INDEX: {
             const currentResolver = resolver;
             const indexResolver = compileTokens(token.index);
             resolver = (contextStack) => {
-                const stack = currentResolver(contextStack);
-                stack.push(last(stack)[indexResolver(contextStack)]);
-                return stack;
+                const state = currentResolver(contextStack);
+                state.stack.push(last(state.stack)[indexResolver(contextStack).value]);
+                return state;
             };
         }   break;
-        case TOKEN_ARRAY: {
-            const elementResolvers = Array.from(token.args, (x) => compileTokens(x));
-            resolver = (contextStack) => [ Array.from(elementResolvers, (x) => x(contextStack)) ];
-        }   break;
+
+        case TOKEN_ARRAY:
+            if (resolver === null) {
+                const elementResolvers = Array.from(token.args, (x) => compileTokens(x));
+                resolver = (contextStack) => {
+                    return {
+                        stack: [ Array.from(elementResolvers, (x) => x(contextStack).value) ],
+                        set: null
+                    };
+                };
+            }
+            else {
+                throw makeError(`Invalid array token position: ${token.args}`);
+            }
+            break;
+
         case TOKEN_CALL: {
             const currentResolver = resolver;
             const argumentResolvers = Array.from(token.args, (x) => compileTokens(x));
             resolver = (contextStack) => {
-                const stack = currentResolver(contextStack);
-                const thisArg = last(stack, 1);
-                const func = last(stack);
-                stack.push(func.apply(thisArg, Array.from(argumentResolvers, (x) => x(contextStack))));
-                return stack;
+                const state = currentResolver(contextStack);
+                const thisArg = last(state.stack, 1);
+                const func = last(state.stack);
+                if (thisArg === ASSIGNMENT_OPERATOR) {
+                    state.stack.push(
+                        func.apply(
+                            thisArg,
+                            [ Array.from(argumentResolvers, (x) => x(contextStack)) ]));
+                }
+                else {
+                    state.stack.push(
+                        func.apply(
+                            thisArg,
+                            Array.from(argumentResolvers, (x) => x(contextStack).value)));
+                }
+                return state;
             };
         }   break;
+
         default:
             throw makeError(`Invalid token type: ${token.type}`);
         }
@@ -565,9 +800,13 @@ function parse(string) {
         throw makeError(`Unexpected token array: ${JSON.stringify(tokens)}`);
     }
 
-    return function (contextStack) {
-        return last(resolver(contextStack));
-    }
+    return (contextStack) => {
+        const state = resolver(contextStack);
+        return {
+            value: last(state.stack),
+            set: state.set
+        };
+    };
 }
 
 /**
@@ -577,7 +816,7 @@ function parse(string) {
  */
 export function compile(string) {
     if (typeof string === 'string') {
-        /** @type {(function(Object[]): Object)[]} */
+        /** @type {(function(Object[]): Variable)[]} */
         const compiled = [];
 
         while (true) {
@@ -586,7 +825,10 @@ export function compile(string) {
             if (found === null) {
                 const value = string;
                 compiled.push(() => {
-                    return value;
+                    return {
+                        value,
+                        set: null
+                    };
                 });
                 break;
             }
@@ -594,7 +836,10 @@ export function compile(string) {
             if (found[1].length) {
                 const value = found[1];
                 compiled.push(() => {
-                    return value;
+                    return {
+                        value,
+                        set: null
+                    };
                 });
             }
 
@@ -611,13 +856,15 @@ export function compile(string) {
         }
 
         if (compiled.length == 1) {
-            return compiled[0];
+            return (contextStack) => {
+                return compiled[0](contextStack).value;
+            };
         }
         else if (2 <= compiled.length) {
             return (contextStack) => {
-                let ret = compiled[0](contextStack);
+                let ret = compiled[0](contextStack).value;
                 for (let i = 1; i < compiled.length; ++i) {
-                    ret += compiled[i](contextStack);
+                    ret += compiled[i](contextStack).value;
                 }
                 return ret;
             };
