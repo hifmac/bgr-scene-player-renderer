@@ -471,7 +471,6 @@ export class LumaData {
 
         const actualWidth = Math.min(this.width, image.width + dx) - Math.max(0, dx);
         const actualHeight = Math.min(this.height, image.height + dy) - Math.max(0, dy);
-        console.log(this.width, this.height, image.width, image.height, actualWidth, actualHeight);
         for (let y = 0; y < actualHeight; ++y) {
             for (let x = 0; x < actualWidth; ++x) {
                 data[dst] = this.data[dst] * (1 - image.alpha[src] * image.alpha[src]) + image.data[src] * image.alpha[src] * image.alpha[src];

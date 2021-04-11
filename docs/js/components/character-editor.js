@@ -54,7 +54,7 @@ const template = {
             }
         },
         "label": {
-            "bind:textContent": "{{ completedCharacters }}キャラ"
+            "bind:textContent": "{{ completedCharacters }} / {{ loadedCharacters }}キャラ"
         }
     },
     "div.character-texture-setting p-q2": {
@@ -399,7 +399,7 @@ function estimatePosition(example, texture, baseRect, faceRect) {
      * @param {Nina.Rect} rect 
      * @param {function(Nina.Rect, number, number): Nina.LumaData} makeImage 
      */
-    const evaluate = (rect, makeImage, save=undefined) => {
+    const evaluate = (rect, makeImage) => {
         const best = {
             pos: { ...rect },
             image: makeImage(rect, 0, 0),
@@ -495,6 +495,7 @@ function countTasks(character) {
  *     currentFace: string,
  *     isBodyRectFixed: boolean,
  *     completedCharacters: number,
+ *     loadedCharacters: number,
  *     mediaSourceId: number,
  *     makeCharacterName: function(CharacterJson): string,
  *     updateFaceEdge: function(number, number, number, number): void,
@@ -576,6 +577,7 @@ function createData(characterEditor) {
 
         isBodyRectFixed: false,
         completedCharacters: 0,
+        loadedCharacters: 0,
         mediaSourceId: null,
 
         get currentCharacter() {
@@ -597,6 +599,9 @@ function createData(characterEditor) {
                     name = `[△] ${name}`;
                 }
                 name += `(身体：${tasks.body ? '未' : '完'}, 表情：${tasks.face ? `残${tasks.face}` : '完'})`;
+            }
+            else if ('sprite_rect' in character) {
+                name = `[◎] ${name}`;
             }
             else {
                 name = `[〇] ${name}`;
@@ -997,6 +1002,9 @@ export default class CharacterEditor {
                 const tasks = countTasks(characters[key]);
                 if (tasks.body + tasks.face <= 3) {
                     ++this.#data.completedCharacters;
+                }
+                if ('sprite_rect' in characters[key]) {
+                    ++this.#data.loadedCharacters;
                 }
             }
             sortCharacter(this.#data.characters);
