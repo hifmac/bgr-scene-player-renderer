@@ -101,3 +101,7 @@
 .hidden {
     visibility: hidden;
 }
+
+.custom-file {
+    display: none;
+}

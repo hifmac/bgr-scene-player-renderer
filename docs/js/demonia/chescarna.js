@@ -111,7 +111,7 @@ export class Component {
         let type = 'tag';
         while (true) {
             const pos = tag.substring(start).search(/[$.#]/);
-            if (pos == -1) {
+            if (pos === -1) {
                 ret[type] = tag.substring(start);
                 break;
             }
@@ -120,9 +120,7 @@ export class Component {
                 ret[type] = tag.substring(start, start + pos);
             }
 
-            start += pos + 1;
-
-            switch (tag.charAt(pos)) {
+            switch (tag.charAt(start + pos)) {
             case '$':
                 type = 'name';
                 break;
@@ -133,8 +131,10 @@ export class Component {
                 type = 'id';
                 break;
             default:
-                throw new Error(`Unknown charater: ${tag.charAt(pos)}`);
+                throw new Error(`Unknown charater: ${tag} / ${tag.charAt(start + pos)}`);
             }
+
+            start += pos + 1;
         }
 
         if (!ret.tag && !ret.id) {

@@ -25,9 +25,6 @@ class Component extends Chescarna.Component {
         this.#children = [];
         this.#element = element;
         this.#elementDict = elementDict;
-        if (this.#element.id) {
-            elementDict[this.#element.id] = this.#element;
-        }
     }
     
     /**
@@ -95,7 +92,10 @@ class Component extends Chescarna.Component {
      * @param {Component} component 
      */
     appendChild(component) {
-        this.#element.appendChild(component.#element);
+        if (component.element.id) {
+            this.#elementDict[component.element.id] = component.element;
+        }
+        this.#element.appendChild(component.element);
         this.#children.push(component);
     }
     
@@ -193,7 +193,9 @@ export default class Adelite {
         const parsed = Component.parseTag(tagName);
         if (parsed.tag) {
             element = document.createElement(parsed.tag);
-            element.id = parsed.id;
+            if (parsed.id) {
+                element.id = parsed.id;
+            }
         }
         else {
             element = document.getElementById(parsed.id);

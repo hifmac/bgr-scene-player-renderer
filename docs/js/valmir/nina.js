@@ -446,28 +446,56 @@ export class LumaData {
     }
 
     /**
-     * blent this and image
+     * blend this and image
      * @param {LumaData} image 
      */
-    blend(image) {
-        if (this.data.length !== image.data.length
-            || this.width !== image.width
-            || this.height !== image.height) {
-            console.log(this);
-            console.log(image);
-            throw makeError(`this and image must be same size`);
+    blend(image, dx, dy) {
+        const data = this.data.slice();
+        const alpha = this.alpha.slice();
+
+        let src = 0;
+        let dst = 0;
+        if (dy < 0) {
+            src -= image.width * dy;
+        }
+        else {
+            dst += this.width * dy;
         }
 
-        const data = new Int16Array(this.data.length);
-        const alpha = new Array(this.alpha.length);
-        for (let i = data.length; i--;) {
-            data[i] = this.data[i] * (1 - image.alpha[i]) + image.data[i] * image.alpha[i];
-            alpha[i] = this.alpha[i] * (1 - image.alpha[i]) + image.alpha[i];
+        if (dx < 0) {
+            src -= dx;
         }
+        else {
+            dst += dx;
+        }
+
+        const actualWidth = Math.min(this.width, image.width + dx) - Math.max(0, dx);
+        const actualHeight = Math.min(this.height, image.height + dy) - Math.max(0, dy);
+        console.log(this.width, this.height, image.width, image.height, actualWidth, actualHeight);
+        for (let y = 0; y < actualHeight; ++y) {
+            for (let x = 0; x < actualWidth; ++x) {
+                data[dst] = this.data[dst] * (1 - image.alpha[src] * image.alpha[src]) + image.data[src] * image.alpha[src] * image.alpha[src];
+                alpha[dst] = this.alpha[dst] * (1 - image.alpha[src] * image.alpha[src]) + image.alpha[src] * image.alpha[src];
+                ++dst, ++src;
+            }
+            src += image.width - actualWidth;
+            dst += this.width - actualWidth;
+        }
+
         return new LumaData(data, alpha, this.width, this.height);
     }
 
     save(filename) {
+        const imageData = this.getImageData();
+        const canvas = document.createElement('canvas');
+        canvas.width = imageData.width;
+        canvas.height = imageData.height;
+        const context = canvas.getContext('2d');
+        context.putImageData(imageData, 0, 0);
+        saveURLAsFile(filename, canvas.toDataURL(), 'image/png');
+    }
+
+    getImageData() {
         const imageData = new ImageData(this.width, this.height);
         for (let i = 0; i < this.data.byteLength; ++i) {
             const offset = i << 2;
@@ -478,11 +506,25 @@ export class LumaData {
                 imageData.data[offset + 3] = this.alpha[i] * 255 | 0;
             }
         }
+        return imageData;
+    }
+
+    toCanvas() {
+        const imageData = this.getImageData();
         const canvas = document.createElement('canvas');
-        canvas.width = this.width;
-        canvas.height = this.height;
+        canvas.width = imageData.width;
+        canvas.height = imageData.height;
         const context = canvas.getContext('2d');
         context.putImageData(imageData, 0, 0);
-        saveURLAsFile(filename, canvas.toDataURL(), 'image/png');
+        return canvas;
     }
+
+    /** @type {Int16Array} */
+    data = null;
+
+    /** @type {Array<number>} */
+    alpha = null;
+
+    width = 0;
+    height = 0;
 }
