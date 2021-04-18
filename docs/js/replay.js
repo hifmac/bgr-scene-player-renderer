@@ -38,7 +38,7 @@ const template = {
         },
         "image#background": {
             "bind:src": "{{ background }}",
-            "once:rect": "{{ [ 0, 448, 1024, 576, 0, 0, 1024, 576 ] }}"
+            "bind:rect": "{{ backgroundRect }}"
         },
         "sprite#character": {
             "forEach:target": "{{ [ back, front ] }}",
@@ -117,6 +117,21 @@ const template = {
             "on:click": "{{ onClickIgnored() }}",
             "button": {
                 "forEach:choice": "{{ twoChoices }}",
+                "bind:src": "{{ widgetCatalog.get(choice.normal).src }}",
+                "bind:rect": "{{ widgetCatalog.get(choice.normal).dst }}",
+                "bind:src-hover": "{{ widgetCatalog.get(choice.hover).src }}",
+                "bind:rect-hover": "{{ widgetCatalog.get(choice.hover).dst }}",
+                "bind:src-active": "{{ widgetCatalog.get(choice.active).src }}",
+                "bind:rect-active": "{{ widgetCatalog.get(choice.active).dst }}",
+                "on:click": "{{ choice.onClicked() }}"
+            },
+        },
+        "sprite#4choices": {
+            "if": "{{ hasFourChoiceOption() }}",
+            "once:rect": "{{ [ 0, 0, 1024, 576 ] }}",
+            "on:click": "{{ onClickIgnored() }}",
+            "button": {
+                "forEach:choice": "{{ fourChoices }}",
                 "bind:src": "{{ widgetCatalog.get(choice.normal).src }}",
                 "bind:rect": "{{ widgetCatalog.get(choice.normal).dst }}",
                 "bind:src-hover": "{{ widgetCatalog.get(choice.hover).src }}",
@@ -225,6 +240,7 @@ class Replay {
         /**
          * @type {{
          *     background: Nina.DrawableElement,
+         *     backgroundRect: number[],
          *     name: any,
          *     talk: any,
          *     characters: Character,
@@ -253,11 +269,12 @@ class Replay {
          *     hasFourChoiceOption: () => boolean,
          *     onClicked: () => void,
          *     onClickIgnored: () => void,
-         *     loadDialog: (dialog_id: string) => void,
+         *     loadDialog: (dialog_id: number) => void,
          * }}
          */
         const data = {
             background: null,
+            backgroundRect: [ 0, 448, 1024, 576, 0, 0, 1024, 576 ],
             name: {
                 text: '',
                 font: 'メイリオ',
@@ -328,17 +345,7 @@ class Replay {
                     hover: 'quesion-ok-hover',
                     active: 'quesion-ok-active',
                     onClicked() {
-                        const pos = data.dialog.option.indexOf('〇');
-                        if (pos === -1) {
-                            if (confirm('終了しますか？')) {
-                                window.close();
-                            }
-                        }
-                        else {
-                            if (pos < data.dialog.next.length) {
-                                data.loadDialog(data.dialog.next[pos]);
-                            }
-                        }
+                        data.loadDialog(data.dialog.option.indexOf('〇'));
                     }
                 },
                 {
@@ -346,17 +353,7 @@ class Replay {
                     hover: 'quesion-ng-hover',
                     active: 'quesion-ng-active',
                     onClicked() {
-                        const pos = data.dialog.option.indexOf('×');
-                        if (pos === -1) {
-                            if (confirm('終了しますか？')) {
-                                window.close();
-                            }
-                        }
-                        else {
-                            if (pos < data.dialog.next.length) {
-                                data.loadDialog(data.dialog.next[pos]);
-                            }
-                        }
+                        data.loadDialog(data.dialog.option.indexOf('×'));
                     }
                 }
             ],
@@ -374,20 +371,26 @@ class Replay {
             },
 
             onClicked: () => {
-                if (data.dialog.next) {
-                    data.loadDialog(data.dialog.next[0]);
-                }
-                else {
-                    if (confirm('終了しますか？')) {
-                        window.close();
-                    }
-                }
+                data.loadDialog(0);
             },
 
             onClickIgnored: () => {},
 
-            loadDialog: (dialog_id) => {
-                const dialog = data.dialog = data.dialogs[dialog_id];
+            loadDialog: (next_index) => {
+                if (data.dialog) {
+                    if (!data.dialog.next || next_index < 0 || data.dialog.next.length <= next_index) {
+                        if (confirm('終了しますか？')) {
+                            window.close();
+                        }
+                        return ;
+                    }
+                    data.dialog = data.dialogs[data.dialog.next[next_index]];
+                }
+                else {
+                    data.dialog = data.dialogs[next_index];
+                }
+
+                const dialog = data.dialog;
 
                 if (data.erase) {
                     data.front = this.createCharacter();
@@ -455,7 +458,14 @@ class Replay {
 
                 if ('bg_pic' in dialog) {
                     Nina.readAsImage(`${this.#config.data.texture.dialog}/${dialog.bg_pic}`).then((img) => {
+                        /* centering H CG */
+                        const offset = (dialog.bg_pic.charAt(0) == 'h' ? 650 : 576);
+
                         data.background = img;
+                        data.backgroundRect = [
+                            0, img.height - offset, 1024, 576,
+                            0, 0, 1024, 576
+                        ];
                         this.#lilium.update();
                     }).catch(printStack);
                 }
