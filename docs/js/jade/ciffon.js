@@ -139,9 +139,15 @@ const SCENARIO_WIDGET = {
     },
     "quesion-ng-active":{
         "path": "dialog/atlas4",
-        "src": [ 1553, 736, 168, 168 ],
+        "src": [ 1553, 736, 198, 40 ],
         "dst": [ 755, 154 ]
     },
+
+    "question-choise-frame1":{
+        "path": "dialog/atlas3",
+        "src": [ 1777, 1404, 198, 40 ],
+        "dst": [ 666, 115 ]
+    }
 };
 
  /**
