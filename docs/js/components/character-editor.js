@@ -24,13 +24,14 @@ import Adelite from '../sandica/adelite.js';
 
 const CANVAS_SIZE = 2048;
 
-/**{
+/**
  * @typedef {{
  *     id: number,
  *     name: string,
  *     texture: string,
  *     body_rect: number[],
  *     face_rect: Object.<string, number[]>,
+ *     sprite_rect: Object.<string, number[]>,
  * }} CharacterJson
  */
 const template = {
