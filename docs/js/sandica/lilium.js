@@ -7,8 +7,9 @@
  */
 'use strict';
 
-import { makeError } from '../blanc/lisette.js';
+import { makeError, printStack } from '../blanc/lisette.js';
 import * as Chescarna from '../demonia/chescarna.js';
+import * as Nina from '../valmir/nina.js';
 
 /**
  * @class lilium event
@@ -70,7 +71,14 @@ class LiliumBase {
      * @param {string} name 
      */
     getAttribute(name) {
-        throw makeError(`${this.type} doesn't implement attribute getter for ${name}`);
+        switch (name) {
+        case 'id':
+            return this.#id;
+        case 'state':
+            return this.#state;
+        default:
+            throw makeError(`${this.type} doesn't implement attribute getter for ${name}`);
+        }
     }
 
     /**
@@ -339,6 +347,7 @@ class LiliumImage extends LiliumBase {
      */
     constructor(id) {
         super(id);
+        this.#rect = [ 0, 0 ];
     }
 
     /**
@@ -352,21 +361,35 @@ class LiliumImage extends LiliumBase {
                 context.setTransform(-1, 0, 0, 1, 0, 0);
             }
 
-            if (this.#dstRect) {
-                if (this.#srcRect) {
-                    context.drawImage(this.#src,
-                        this.#srcRect[0], this.#srcRect[1], this.#srcRect[2], this.#srcRect[3],
-                        this.#dstRect[0], this.#dstRect[1], this.#dstRect[2], this.#dstRect[3]);
-                }
-                else if (this.#dstRect.length == 2) {
-                    context.drawImage(this.#src,
-                        this.#dstRect[0], this.#dstRect[1]);
-                }
-                else {
-                    context.drawImage(this.#src,
-                        this.#dstRect[0], this.#dstRect[1], this.#dstRect[2], this.#dstRect[3]);
+            /* resized image */
+            if (this.#rect) {
+                switch (this.#rect.length) {
+                case 8:
+                    if (this.#srcResized === null) {
+                        this.#srcResized = Nina.resizeImage(
+                            Nina.imageToCanvas(this.#src, {
+                                x: this.#rect[0],
+                                y: this.#rect[1],
+                                w: this.#rect[2],
+                                h: this.#rect[3],
+                            }),
+                            this.#rect[6],
+                            this.#rect[7]);
+                    }
+                    context.drawImage(this.#srcResized, this.#rect[4], this.#rect[5]);
+                    break;
+                case 4:
+                    if (this.#srcResized === null) {
+                        this.#srcResized = Nina.resizeImage(this.#src, this.#rect[2], this.#rect[3]);
+                    }
+                    context.drawImage(this.#srcResized, this.#rect[0], this.#rect[1]);
+                    break;
+                default:
+                    context.drawImage(this.#src, this.#rect[0], this.#rect[1]);
+                    break;
                 }
             }
+            /* raw image */
             else {
                 context.drawImage(this.#src, 0, 0);
             }
@@ -386,7 +409,7 @@ class LiliumImage extends LiliumBase {
         case 'src':
             return this.#src;
         case 'rect':
-            return (this.#srcRect || []).concat(this.#dstRect || []);
+            return (this.#rect || []);
         case 'flip':
             return this.#flip;
         default:
@@ -404,16 +427,15 @@ class LiliumImage extends LiliumBase {
         switch(name) {
         case 'src':
             this.#src = value;
+            this.#srcResized = null;
             break;
         case 'rect':
             if (Array.isArray(value)) {
-                if (value.length === 2 || value.length === 4) {
-                    this.#srcRect = null;
-                    this.#dstRect = value.slice();
+                if (value === null) {
+                    this.#rect = null;
                 }
-                else if (value.length === 8) {
-                    this.#srcRect = value.slice(0, 4);
-                    this.#dstRect = value.slice(4, 8);
+                else if (value.length === 2 || value.length === 4 || value.length === 8) {
+                    this.#rect = value.slice();
                 }
                 else {
                     throw makeError(`Invalid array length: ${value.length}`);
@@ -433,8 +455,8 @@ class LiliumImage extends LiliumBase {
         return this.#src;
     }
 
-    get dstRect() {
-        return this.#dstRect;
+    get rect() {
+        return this.#rect;
     }
 
     get type() {
@@ -444,11 +466,11 @@ class LiliumImage extends LiliumBase {
     /** @type {HTMLImageElement | HTMLCanvasElement} */
     #src = null;
 
-    /** @type {number[]} */
-    #srcRect = null;
+    /** @type {Nina.DrawableElement} */
+    #srcResized = null;
 
     /** @type {number[]} */
-    #dstRect = null;
+    #rect = null;
 
     /** @type {boolean} */
     #flip = false;
@@ -461,10 +483,26 @@ class LiliumText extends LiliumBase {
      */
     constructor(id) {
         super(id);
+        this.#attributes = {
+            textContent: null,
+            font: null,
+            color: null,
+            lineHeight: 0,
+            wrapWidth: 0,
+            leftTop: [ 0, 0 ],
+            border: false,
+        };
     }
 
+    /**
+     * fill text
+     * @param {CanvasRenderingContext2D} context
+     * @param {string} s string to be filled
+     * @param {number} x x position to fill
+     * @param {number} y y position to fill
+     */
     fillText(context, s, x, y) {
-        if (this.#border) {
+        if (this.#attributes.border) {
             context.fillStyle = 'rgb(0, 0, 0)';
             context.fillText(s, x + 1, y - 1);
             context.fillText(s, x + 1, y + 1);
@@ -472,7 +510,7 @@ class LiliumText extends LiliumBase {
             context.fillText(s, x + 1, y + 1);
         }
 
-        context.fillStyle = this.#color;
+        context.fillStyle = this.#attributes.color;
         context.fillText(s, x, y);
     }
 
@@ -481,24 +519,43 @@ class LiliumText extends LiliumBase {
      * @param {CanvasRenderingContext2D} context
      */
     draw(context) {
-        const x = this.#leftTop[0];
-        let y = this.#leftTop[1];
+        const x = this.#attributes.leftTop[0];
+        let y = this.#attributes.leftTop[1];
  
         context.textAlign = 'left';
         context.textBaseline = 'top';
-        context.font = this.#font;
-        for (const s of this.#textContent.split('\n')) {
-            if (this.#wrapWidth) {
-                for (let i = 0; i < s.length; i += this.#wrapWidth) {
-                    this.fillText(context, s.substring(i, i + this.#wrapWidth), x, y);
-                    y += this.#lineHeight | 0;    
+        context.font = this.#attributes.font;
+        for (const s of this.#attributes.textContent.split('\n')) {
+            if (this.#attributes.wrapWidth) {
+                for (let i = 0; i < s.length; i += this.#attributes.wrapWidth) {
+                    this.fillText(context, s.substring(i, i + this.#attributes.wrapWidth), x, y);
+                    y += this.#attributes.lineHeight | 0;    
                 }
             }
             else {
                 this.fillText(context, s, x, y);
-                y += this.#lineHeight | 0;
+                y += this.#attributes.lineHeight | 0;
             }
         }
+    }
+
+    /**
+     * measure text drawing rectangle
+     * @param {CanvasRenderingContext2D} context
+     */
+    measureText(context) {
+        if (this.#attributes.textContent) {
+            const metrics = context.measureText(this.#attributes.textContent);
+            return {
+                width: Math.abs(metrics.actualBoundingBoxLeft) + Math.abs(metrics.actualBoundingBoxRight),
+                height: Math.abs(metrics.actualBoundingBoxAscent) + Math.abs(metrics.actualBoundingBoxDescent)
+            };
+        }
+
+        return {
+            width: 0,
+            height: 0
+        };
     }
 
     /**
@@ -508,19 +565,13 @@ class LiliumText extends LiliumBase {
     getAttribute(name) {
         switch(name) {
         case 'textContent':
-            return this.#textContent;
         case 'font':
-            return this.#font;
         case 'color':
-            return this.#color;
         case 'lineHeight':
-            return this.#lineHeight;
         case 'wrapWidth':
-            return this.#wrapWidth;
         case 'leftTop':
-            return this.#leftTop;
         case 'border':
-            return this.#border;
+            return this.#attributes[name];
         default:
             super.getAttribute(name);
             break;
@@ -535,31 +586,21 @@ class LiliumText extends LiliumBase {
     setAttribute(name, value) {
         switch(name) {
         case 'textContent':
-            this.#textContent = value;
-            break;
         case 'font':
-            this.#font = value;
-            break;
         case 'color':
-            this.#color = value;
-            break;
         case 'lineHeight':
-            this.#lineHeight = value;
-            break;
         case 'wrapWidth':
-            this.#wrapWidth = value;
+        case 'border':
+            // @ts-ignore
+            this.#attributes[name] = value;
             break;
         case 'leftTop':
-            if (Array.isArray(value) && value.length === 2) {
-                this.#leftTop = value;
-            }
-            else {
+            if (!Array.isArray(value) || value.length !== 2) {
                 throw makeError(`Invalid array length: ${value.length}`);
             }
-            break;
-        case 'border':
-            this.#border = value;
-            break;
+            // must be array
+            this.#attributes[name] = value.slice();
+            break;    
         default:
             super.setAttribute(name, value);
             break;
@@ -570,31 +611,31 @@ class LiliumText extends LiliumBase {
         return 'text';
     }
 
-    /** @type {string} */
-    #textContent = null;
-
-    /** @type {string} */
-    #font = null;
-
-    /** @type {string} */
-    #color = null;
-
-    /** @type {number} */
-    #lineHeight = 0;
-
-    /** @type {number} */
-    #wrapWidth = 0;
-
-    /** @type {number[]} */
-    #leftTop = [ 0, 0 ];
-
-    /** @type {boolean} */
-    #border = false;
+    /**
+     * @type {{
+     *     textContent: string,
+     *     font: string,
+     *     color: string,
+     *     lineHeight: number,
+     *     wrapWidth: number,
+     *     leftTop: number[],
+     *     border: boolean,
+     * }}
+     */
+    #attributes = null;
 }
 
 class LiliumButton extends LiliumBase {
     constructor(id) {
         super(id);
+        this.attributes = {
+            fitToText: {
+                x: true,
+                y: false
+            },
+            textMargin: [ 0, 0 ]
+        };
+        this.text = new LiliumText(id ? `${id}-text` : null);
         this.normal = new LiliumImage(id ? `${id}-normal` : null);
         this.hover = new LiliumImage(id ? `${id}-hover` : null);
         this.active = new LiliumImage(id ? `${id}-active` : null);
@@ -605,7 +646,14 @@ class LiliumButton extends LiliumBase {
      * @param {CanvasRenderingContext2D} context
      */
     draw(context) {
-        this.getImageByState().draw(context);
+        if (this.text.getAttribute('textContent')) {
+            this.updateSize(context);
+            this.getImageByState().draw(context);
+            this.text.draw(context);
+        }
+        else {
+            this.getImageByState().draw(context);
+        }
     }
 
     /**
@@ -613,9 +661,22 @@ class LiliumButton extends LiliumBase {
      * @param {string} name 
      */
     getAttribute(name) {
-        return this.getImageByAttribute(name, (image, name) => {
-            return image.getAttribute(name);
-        });
+        switch (name) {
+        case 'textContent':
+        case 'font':
+        case 'color':
+        case 'lineHeight':
+        case 'wrapWidth':
+        case 'border':
+            return this.text.getAttribute(name);
+        case 'fitToText':
+        case 'textMargin':
+            return this.attributes[name];
+        default:
+            return this.getImageByAttribute(name, (image, name) => {
+                return image.getAttribute(name);
+            });
+        }
     }
 
     /**
@@ -624,30 +685,50 @@ class LiliumButton extends LiliumBase {
      * @param {any} value 
      */
     setAttribute(name, value) {
-        this.getImageByAttribute(name, (image, name) => {
-            image.setAttribute(name, value);
-        });
+        switch (name) {
+        case 'textContent':
+        case 'font':
+        case 'color':
+        case 'lineHeight':
+        case 'wrapWidth':
+        case 'border':
+            this.text.setAttribute(name, value);
+            break
+        case 'fitToText':
+        case 'textMargin':
+            this.attributes[name] = value;
+            break;
+        default:
+            this.getImageByAttribute(name, (image, name) => {
+                image.setAttribute(name, value);
+            });
+            break;
+        }
     }
 
     /**
      * an event is included by this component
-     * @param {PointerEvent} event 
+     * @param {LiliumPointerEvent} event 
      * @returns {boolean}
      */
     isIncluding(event) {
         const image = this.getImageByState();
-        return (image.dstRect
-            && image.dstRect[0] <= event.x && event.x < image.dstRect[0] + image.dstRect[2]
-            && image.dstRect[1] <= event.y && event.y < image.dstRect[1] + image.dstRect[3]);
+        return (image.rect
+            && image.rect[0] <= event.x && event.x < image.rect[0] + image.rect[2]
+            && image.rect[1] <= event.y && event.y < image.rect[1] + image.rect[3]);
     }
 
     getImageByState() {
         if (this.state.has(LiliumBase.HOVER)) {
             if (this.state.has(LiliumBase.HOLD)) {
-                return this.active;
+                if (this.active.src) {
+                    return this.active;
+                }
             }
             else {
-                return this.hover;                
+                if (this.hover.src) {
+                    return this.hover;
+                }
             }
         }
 
@@ -672,9 +753,57 @@ class LiliumButton extends LiliumBase {
         }
     }
 
+    updateSize(context) {
+        const image = this.getImageByState();
+
+        /** @type {number[]} */
+        const rect = image.getAttribute('rect');
+
+        const size = this.text.measureText(context);
+        const totalWidth = size.width + this.attributes.textMargin[0] * 2;
+        const totalHeight = size.height + this.attributes.textMargin[1] * 2;
+        if ((this.attributes.fitToText.x && rect[2] != totalWidth)
+            || (this.attributes.fitToText.y && rect[3] != totalHeight)) {
+            const width = (this.attributes.fitToText.x ? totalWidth : rect[2]);
+            const height = (this.attributes.fitToText.y ? totalHeight : rect[3]);
+            const newRect = [
+                rect[0] + ((rect[2] - width) >> 1),
+                rect[1] + ((rect[3] - height) >> 1),
+                width,
+                height,
+            ];
+
+            image.setAttribute('rect', newRect);
+            this.text.setAttribute('leftTop', [
+                newRect[0] + ((newRect[2] - size.width) >> 1),
+                newRect[1] + ((newRect[3] - size.height) >> 1),
+            ]);
+        }
+        else {
+            this.text.setAttribute('leftTop', [
+                rect[0] + ((rect[2] - size.width) >> 1),
+                rect[1] + ((rect[3] - size.height) >> 1),
+            ]);
+        }
+    }
+
     get type() {
         return 'button';
     }
+
+    /**
+     * @type {{
+     *     fitToText: {
+     *         x: boolean,
+     *         y: boolean
+     *     },
+     *     textMargin: number[]
+     * }}
+     */
+    attributes = null;
+
+    /** @type {LiliumText} */
+    text = null;
 
     /** @type {LiliumImage} */
     normal = null;
@@ -910,6 +1039,9 @@ class LiliumPointerEvent {
         return this.#history[this.#history.length - 1];
     }
 
+    /** @type {CanvasRenderingContext2D} */
+    context = null;
+
     /** @type {Component} */
     #handler = null
 
@@ -934,6 +1066,7 @@ export default class Lilium {
         this.#pointerEventListener = (event) => {
             if (this.#component) {
                 this.#pointerEvent.push(event);
+                this.#pointerEvent.context = this.#context;
                 if (!this.#component.onPointerEvent(this.#pointerEvent)) {
                     this.#pointerEvent.register(null);
                 }

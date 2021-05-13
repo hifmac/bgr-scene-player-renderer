@@ -132,13 +132,13 @@ const template = {
             "on:click": "{{ onClickIgnored() }}",
             "button": {
                 "forEach:choice": "{{ fourChoices }}",
-                "bind:src": "{{ widgetCatalog.get(choice.normal).src }}",
-                "bind:rect": "{{ widgetCatalog.get(choice.normal).dst }}",
-                "bind:src-hover": "{{ widgetCatalog.get(choice.hover).src }}",
-                "bind:rect-hover": "{{ widgetCatalog.get(choice.hover).dst }}",
-                "bind:src-active": "{{ widgetCatalog.get(choice.active).src }}",
-                "bind:rect-active": "{{ widgetCatalog.get(choice.active).dst }}",
-                "on:click": "{{ choice.onClicked() }}"
+                "bind:src": "{{ widgetCatalog.get('question-choise-frame1').src }}",
+                "once:rect": "{{ choice.rect }}",
+                "once:textContent": "{{ dialog.option[choice.index] }}",
+                "once:font": "16px \"メイリオ\"",
+                "once:textMargin": "{{ [ 16, 0 ] }}",
+                "once:color": "#ffffff",
+                "on:click": "{{ loadDialog(choice.index) }}"
             },
         }
     }
@@ -262,6 +262,10 @@ class Replay {
          *          active: string,
          *          onClicked: () => void
          *     }[],
+         *     fourChoices: {
+         *          index: number,
+         *          rect: number[],
+         *     }[],
          *     fonts: string[],
          *     player: Claire.Player,
          *     widgetCatalog: Ciffon.WidgetCatalog,
@@ -358,6 +362,25 @@ class Replay {
                 }
             ],
 
+            fourChoices: [
+                {
+                    index: 0,
+                    rect: [ 666, 115, 198, 40 ],
+                },
+                {
+                    index: 1,
+                    rect: [ 666, 179, 198, 40 ],
+                },
+                {
+                    index: 2,
+                    rect: [ 666, 243, 198, 40 ],
+                },
+                {
+                    index: 3,
+                    rect: [ 666, 307, 198, 40 ],
+                }
+            ],
+
             fonts: Ciffon.FONTS,
             player: new Claire.Player(this.#config),
             widgetCatalog: new Ciffon.WidgetCatalog(this.#config),
@@ -385,6 +408,7 @@ class Replay {
                         return ;
                     }
                     data.dialog = data.dialogs[data.dialog.next[next_index]];
+                    console.log(data.dialog);
                 }
                 else {
                     data.dialog = data.dialogs[next_index];
@@ -459,7 +483,8 @@ class Replay {
                 if ('bg_pic' in dialog) {
                     Nina.readAsImage(`${this.#config.data.texture.dialog}/${dialog.bg_pic}`).then((img) => {
                         /* centering H CG */
-                        const offset = (dialog.bg_pic.charAt(0) == 'h' ? 650 : 576);
+                        const offset = (dialog.bg_pic.indexOf('/h') !== -1 ? 650 : 576);
+                        console.log(dialog.bg_pic, offset);
 
                         data.background = img;
                         data.backgroundRect = [
@@ -534,45 +559,48 @@ class Replay {
      * }}
      */
     calcCharacterPosition(body, face,  flip, dest) {
-        const bodyRect = { x: body[0], y: body[1], w: body[2], h: body[3], };
-        const faceRect = {
-            sx: face[2], sy: face[3], sw: face[4], sh: face[5],
-            dx: face[0], dy: face[1], dw: face[4], dh: face[5],
-        };
-
-        const hScale = flip ? -1 : 1;
-
-        const bodyToFace = {
-            dx: flip ? (bodyRect.x + bodyRect.w - faceRect.dx - faceRect.dw) : (faceRect.dx - bodyRect.x),
-            dy: faceRect.dy - bodyRect.y,
-        };
-        const faceOffsetH = faceRect.dw >> 1;
-
         const ret = {
             body: null, 
             face: null
         };
 
-        ret.body = [
-            bodyRect.x,
-            bodyRect.y,
-            bodyRect.w,
-            bodyRect.h,
-            hScale * (dest.x - faceOffsetH - bodyToFace.dx),
-            dest.y - bodyToFace.dy,
-            hScale * bodyRect.w,
-            bodyRect.h,
-        ];
-        ret.face = [
-            faceRect.sx,
-            faceRect.sy,
-            faceRect.sw,
-            faceRect.sh,
-            ret.body[4] + hScale * bodyToFace.dx,
-            ret.body[5] + bodyToFace.dy,
-            hScale * faceRect.dw,
-            faceRect.dh
-        ];
+        if (body.length === 4 && face.length === 6) {
+            const bodyRect = { x: body[0], y: body[1], w: body[2], h: body[3], };
+            const faceRect = {
+                sx: face[2], sy: face[3], sw: face[4], sh: face[5],
+                dx: face[0], dy: face[1], dw: face[4], dh: face[5],
+            };
+
+            const hScale = flip ? -1 : 1;
+
+            const bodyToFace = {
+                dx: flip ? (bodyRect.x + bodyRect.w - faceRect.dx - faceRect.dw) : (faceRect.dx - bodyRect.x),
+                dy: faceRect.dy - bodyRect.y,
+            };
+            const faceOffsetH = faceRect.dw >> 1;
+
+            ret.body = [
+                bodyRect.x,
+                bodyRect.y,
+                bodyRect.w,
+                bodyRect.h,
+                hScale * (dest.x - faceOffsetH - bodyToFace.dx),
+                dest.y - bodyToFace.dy,
+                hScale * bodyRect.w,
+                bodyRect.h,
+            ];
+
+            ret.face = [
+                faceRect.sx,
+                faceRect.sy,
+                faceRect.sw,
+                faceRect.sh,
+                ret.body[4] + hScale * bodyToFace.dx,
+                ret.body[5] + bodyToFace.dy,
+                hScale * faceRect.dw,
+                faceRect.dh
+            ];
+        }
 
         return ret;
     }

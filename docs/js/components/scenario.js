@@ -18,6 +18,7 @@ import Adelite from '../sandica/adelite.js';
 const template = {
     "div.page_list_row": {
         "forEach:row": "{{ rows }}",
+        "bind:id": "{{ row.id }}",
         "on:click": "{{ onRowClicked(row) }}",
         "img": {
             "if": "{{ row.hasIcon }}",
@@ -95,45 +96,47 @@ export default class Scenario {
     }
 
     drawPage(page) {
-        this.#rows = [];
-        this.#adelite.update();
-
-        const promises = [];
-        for (let subpageId of page.subpages) {
-            promises.push(IPC.requestPage(subpageId));
-        }
-
-        Promise.all(promises)
-        .then((subpages) => {
-            this.#rows = [
-                {
-                    title: '戻る',
-                    back: true,
-                }
-            ];
-
-            for (const subpage of subpages) { 
-                const row = {
-                    hasIcon: 'icon' in subpage,
-                    iconSrc: null,
-                    title: subpage.title,
-                    page: subpage
-                };
-                this.#rows.push(row);
-
-                if (row.hasIcon) {
-                    Nina.readAsDataURL(this.#config.data.texture.icon + '/' + subpage.icon + '.png')
-                        .then((url) => {
-                            row.iconSrc = url;
-                            this.#adelite.update();
-                        })
-                        .catch(printStack);
-                }
-            }
-
+        return new Promise((resolve, reject) => {
+            this.#rows = [];
             this.#adelite.update();
-        })
-        .catch(printStack);
+    
+            const promises = [];
+            for (let subpageId of page.subpages) {
+                promises.push(IPC.requestPage(subpageId));
+            }
+    
+            Promise.all(promises).then((subpages) => {
+                this.#rows = [
+                    {
+                        title: '戻る',
+                        back: true,
+                    }
+                ];
+
+                for (const subpage of subpages) {
+                    const row = {
+                        id: subpage.id || null,
+                        hasIcon: 'icon' in subpage,
+                        iconSrc: null,
+                        title: subpage.title,
+                        page: subpage
+                    };
+                    this.#rows.push(row);
+
+                    if (row.hasIcon) {
+                        Nina.readAsDataURL(this.#config.data.texture.icon + '/' + subpage.icon + '.png')
+                            .then((url) => {
+                                row.iconSrc = url;
+                                this.#adelite.update();
+                            })
+                            .catch(printStack);
+                    }
+                }
+
+                this.#adelite.update().then(resolve).catch(reject);
+            })
+            .catch(printStack);
+        });
     };
 
     /**
@@ -155,13 +158,17 @@ export default class Scenario {
     };
 
     back() {
+        let anchor = null;
         if (2 <= this.#history.length) {
-            this.#history.pop();
+            anchor = this.#history.pop();
         }
 
         IPC.requestPage(last(this.#history))
-            .then((page) => this.drawPage(page))
-            .catch(printStack);
+            .then((page) => {
+                this.drawPage(page).then(() => {
+                    document.location.hash = `#${anchor}`;
+                });
+            }).catch(printStack);
     }
 
     get rows() {

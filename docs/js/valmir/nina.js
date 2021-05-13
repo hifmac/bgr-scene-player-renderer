@@ -161,11 +161,11 @@ const isPngFile = (data) => {
 };
 
 /**
- * 
+ * convert image to canvas
  * @param {DrawableElement} img 
  * @param {Rect} rect 
  */
-const imageToCanvas = (img, rect) => {
+export const imageToCanvas = (img, rect) => {
     const canvas = document.createElement('canvas');
     canvas.width = rect.w;
     canvas.height = rect.h;
@@ -350,7 +350,7 @@ export function toDataURL(img) {
 }
 
 /**
- * 
+ * clip image with rectangle
  * @param {DrawableElement} img file path to read
  * @param {Rect} rect
  * @returns {Promise<HTMLCanvasElement>}
@@ -375,6 +375,98 @@ export function getImageData(image, rect) {
             .getContext('2d')
             .getImageData(0, 0, rect.w, rect.h);
     }
+}
+
+/**
+ * resize image with 9-patch like algorithm
+ * @param {DrawableElement} image 
+ * @param {number} width 
+ * @param {number} height 
+ * @param {number} patchSize size not to be resized
+ */
+export function resizeImage(image, width, height, patchSize=10) {
+    if (image.width === width
+        && image.height === height) {
+        return image;
+    }
+
+    const patchWidth = patchSize;
+    const patchHeight = patchSize;
+
+    if (width < patchWidth * 2
+        || height < patchHeight * 2) {
+        throw new Error(`too small to scale: (${width}, ${height}) < (${patchWidth}, ${patchHeight})`);
+    }
+
+    const src = {
+        lt: { x: patchWidth, y: patchHeight },
+        lb: { x: patchWidth, y: image.height - patchHeight },
+        rt: { x: image.width - patchWidth, y: patchHeight },
+        rb: { x: image.width - patchWidth, y: image.height - patchHeight },
+    };
+
+    const dst = {
+        lt: { x: patchWidth, y: patchHeight },
+        lb: { x: patchWidth, y: height - patchHeight },
+        rt: { x: width - patchWidth, y: patchHeight },
+        rb: { x: width - patchWidth, y: height - patchHeight },
+    };
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+
+    /* lt */
+    context.drawImage(image,
+        0, 0, patchWidth, patchHeight,
+        0, 0, patchWidth, patchHeight);
+
+    /* lb */
+    context.drawImage(image,
+        0, src.lb.y, patchWidth, patchHeight,
+        0, dst.lb.y, patchWidth, patchHeight);
+
+    /* rt */
+    context.drawImage(image,
+        src.rt.x, 0, patchWidth, patchHeight,
+        dst.rt.x, 0, patchWidth, patchHeight);
+
+    /* rb */
+    context.drawImage(image,
+        src.rb.x, src.rb.y, patchWidth, patchHeight,
+        dst.rb.x, dst.rb.y, patchWidth, patchHeight);
+
+    /* top, bottom */
+    if (dst.lt.x < dst.rt.x) {
+        context.drawImage(image,
+            src.lt.x, 0, src.rt.x - src.lt.x, patchHeight,
+            dst.lt.x, 0, dst.rt.x - dst.lt.x, patchHeight);
+
+        context.drawImage(image,
+            src.lb.x, src.lb.y, src.rb.x - src.lb.x, patchHeight,
+            dst.lb.x, src.rb.y, dst.rb.x - dst.lb.x, patchHeight);
+    }
+
+    /* left, right */
+    if (dst.lt.y < dst.lb.y) {
+        context.drawImage(image,
+            0, src.lt.y, patchWidth, src.lb.y - src.lt.y,
+            0, dst.lt.y, patchWidth, dst.lb.y - dst.lt.y);
+
+        context.drawImage(image,
+            src.rt.x, src.rt.y, patchWidth, src.rb.y - src.rt.y,
+            dst.rt.x, dst.rt.y, patchWidth, dst.rb.y - dst.rt.y);
+    }
+
+    /* center */
+    if (dst.lt.x < dst.rt.x && dst.lt.y < dst.lb.y) {
+        context.drawImage(image,
+            src.lt.x, src.lt.y, src.rt.x - src.lt.x, src.lb.y - src.lt.y,
+            dst.lt.x, dst.lt.y, dst.rt.x - dst.lt.x, dst.lb.y - dst.lt.y);
+    }
+
+    return canvas;
 }
 
 export class LumaData {
