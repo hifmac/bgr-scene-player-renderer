@@ -358,7 +358,22 @@ class LiliumImage extends LiliumBase {
         if (this.#src) {
             if (this.#flip) {
                 context.save();
-                context.setTransform(-1, 0, 0, 1, 0, 0);
+
+                const horizontalPos = (() => {
+                    if (this.#rect) {
+                        switch (this.#rect.length) {
+                        case 8:
+                            return this.#rect[4] * 2 + this.#rect[6];
+                        case 4:
+                        default:
+                            return this.#rect[0] * 2 + this.#rect[2];
+                        }
+                    }
+                    else {
+                        return 0;
+                    }
+                })();
+                context.setTransform(-1, 0, 0, 1, horizontalPos, 0);
             }
 
             /* resized image */
@@ -380,7 +395,9 @@ class LiliumImage extends LiliumBase {
                     break;
                 case 4:
                     if (this.#srcResized === null) {
-                        this.#srcResized = Nina.resizeImage(this.#src, this.#rect[2], this.#rect[3]);
+                        this.#srcResized = Nina.resizeImage(this.#src,
+                            this.#rect[2],
+                            this.#rect[3]);
                     }
                     context.drawImage(this.#srcResized, this.#rect[0], this.#rect[1]);
                     break;

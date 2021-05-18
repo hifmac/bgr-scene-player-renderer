@@ -164,11 +164,9 @@ export default class Scenario {
         }
 
         IPC.requestPage(last(this.#history))
-            .then((page) => {
-                this.drawPage(page).then(() => {
-                    document.location.hash = `#${anchor}`;
-                });
-            }).catch(printStack);
+            .then((page) => this.drawPage(page))
+            .then(() => document.location.hash = `#${anchor}`)
+            .catch(printStack);
     }
 
     get rows() {

@@ -45,13 +45,15 @@
  *     option: string[],
  * }} Dialog
  * 
- * @typedef {Object.<string, {
+ * @typedef {{
  *     id: number,
  *     name: string,
  *     texture: string,
  *     body_rect: number[],
  *     face_rect: Object.<string, number[]>,
- * }>} Character
+ * }} Character
+ *
+ * @typedef {Object.<string, Character>} Characters
  */
   
 const configLoader = {

@@ -21,6 +21,7 @@ import * as Claire from './jade/claire.js';
 /**
  * @typedef {import('./blanc/lisette.js').Config} Config
  * @typedef {import('./blanc/lisette.js').Dialog} Dialog
+ * @typedef {import('./blanc/lisette.js').Characters} Characters
  * @typedef {import('./blanc/lisette.js').Character} Character
  */
 
@@ -146,12 +147,12 @@ const template = {
 
 const CHARACTER_POSITION = {
     left: {
-        x: 1024 * 0.25 | 0,
-        y: 576 * 0.25 | 0
+        x: 1024 * 0.3 | 0,
+        y: 576 * 0.20 | 0
     },
     right: {
-        x: 1024 * 0.75 | 0,
-        y: 576 * 0.25 | 0
+        x: 1024 * 0.7 | 0,
+        y: 576 * 0.20 | 0
     }
 };
 
@@ -161,7 +162,7 @@ const CHARACTER_POSITION = {
  *     shadow: Nina.DrawableElement,
  *     hasShadow: boolean,
  *     flip: boolean,
- *     character: Object,
+ *     character: Character,
  *     face: string,
  *     bodyRect: number[],
  *     faceRect: number[],
@@ -243,7 +244,7 @@ class Replay {
          *     backgroundRect: number[],
          *     name: any,
          *     talk: any,
-         *     characters: Character,
+         *     characters: Characters,
          *     dialog: Dialog,
          *     dialogs: Object.<string,Dialog>,
          *     frontCharacter: string,
@@ -451,11 +452,11 @@ class Replay {
                     switch (data.frontCharacter) {
                     case '右側':
                         position = 'right';
-                        data.front.flip = true;
+                        data.front.flip = false;
                         break;
                     case '左側':
                         position = 'left';
-                        data.front.flip = false;
+                        data.front.flip = true;
                         break;
                     default:
                         throw makeError(`Invalid character position: ${data.frontCharacter}`);
@@ -571,33 +572,31 @@ class Replay {
                 dx: face[0], dy: face[1], dw: face[4], dh: face[5],
             };
 
-            const hScale = flip ? -1 : 1;
-
             const bodyToFace = {
-                dx: flip ? (bodyRect.x + bodyRect.w - faceRect.dx - faceRect.dw) : (faceRect.dx - bodyRect.x),
+                dx: faceRect.dx - bodyRect.x,
                 dy: faceRect.dy - bodyRect.y,
             };
-            const faceOffsetH = faceRect.dw >> 1;
 
             ret.body = [
                 bodyRect.x,
                 bodyRect.y,
                 bodyRect.w,
                 bodyRect.h,
-                hScale * (dest.x - faceOffsetH - bodyToFace.dx),
-                dest.y - bodyToFace.dy,
-                hScale * bodyRect.w,
+                dest.x - (bodyRect.w >> 1),
+                Math.max(0, dest.y - bodyToFace.dy),
+                bodyRect.w,
                 bodyRect.h,
             ];
+            console.log(dest.x, bodyRect.w, ret.body[4]);
 
             ret.face = [
                 faceRect.sx,
                 faceRect.sy,
                 faceRect.sw,
                 faceRect.sh,
-                ret.body[4] + hScale * bodyToFace.dx,
+                flip ? (ret.body[4] + ret.body[6] - bodyToFace.dx - faceRect.dw) : (ret.body[4] + bodyToFace.dx),
                 ret.body[5] + bodyToFace.dy,
-                hScale * faceRect.dw,
+                faceRect.dw,
                 faceRect.dh
             ];
         }
