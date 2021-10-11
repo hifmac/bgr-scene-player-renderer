@@ -76,7 +76,7 @@ export default class AudioTest {
     }
 
     convertFileName() {
-        for (const characterId of Object.keys(this.#data.directory)) {
+        /*for (const characterId of Object.keys(this.#data.directory)) {
             const voiceDir = `${this.#config.data.audio.voice}/${characterId}`;
             const voiceList = this.#data.directory[characterId].voice;
             Filesystem.readDirectory(voiceDir).then((filenames) => {
@@ -127,7 +127,7 @@ export default class AudioTest {
                     }
                 }
             });
-        }
+        }*/
     }
 
     /** @type {Adelite} */
