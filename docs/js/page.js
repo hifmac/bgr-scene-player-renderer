@@ -21,6 +21,7 @@ import {
  * @param {typeof import('./components/search.js').default} Search 
  * @param {typeof import('./components/texture-preview.js').default} TexturePreview 
  * @param {typeof import('./components/character-editor.js').default} CharacterEditor 
+ * @param {typeof import('./components/audio-test.js').default} AudioTest 
  * @param {Object} config
  */
 function drawPage(
@@ -30,6 +31,7 @@ function drawPage(
     Search,
     TexturePreview,
     CharacterEditor,
+    AudioTest,
     config) {
 
     const background = new Background('#background', config);
@@ -41,6 +43,7 @@ function drawPage(
     const search = new Search('#app', config);
     const texturePreview = new TexturePreview('#app', config);
     const characterEditor = new CharacterEditor('#app', config);
+    const audioTest = new AudioTest('#app', config);
 
     scenario.addViewChangeListener(function(view) {
         if (currentView) {
@@ -68,6 +71,11 @@ function drawPage(
             background.setDialog('/dialog/dialog5');
             currentView = characterEditor;
             document.title = 'キャラクタエディタ';
+            break;
+        case 'Audio':
+            background.setDialog('/dialog/dialog6');
+            currentView = audioTest;
+            document.title = '音声テスト';
             break;
         }
 
@@ -158,6 +166,7 @@ if (BGRSP) {
         import('./components/search.js'),
         import('./components/texture-preview.js'),
         import('./components/character-editor.js'),
+        import('./components/audio-test.js'),
         new Promise((resolve) => onLoad((config) => resolve(config)))
     ]).then((modules) => drawPage(
         modules[0].default,
@@ -166,7 +175,8 @@ if (BGRSP) {
         modules[3].default,
         modules[4].default,
         modules[5].default,
-        modules[6]));
+        modules[6].default,
+        modules[7]));
 }
 else {
     import('./sandica/adelite.js').then((module) => drawTestPage(module.default));

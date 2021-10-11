@@ -82,7 +82,7 @@ const configLoader = {
                     else {
                         window.onload = resolve;
                     }
-                })
+                }, 10000)
             ]).then((values) => {
                 this.config = values[0];
                 for (const listener of this.listenerList) {

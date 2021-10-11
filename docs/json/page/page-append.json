@@ -5,7 +5,8 @@
             "texture_test",
             "file_check",
             "scene_test",
-            "widget_designer"
+            "widget_designer",
+            "audio_test"
         ],
         "id":"debug",
         "title":"デバッグ"
@@ -19,5 +20,10 @@
         "html": "widget-designer.html",
         "id":"widget_designer",
         "title":"画面配置テスト"
+    },
+    "audio_test":{
+        "view":"Audio",
+        "id":"audio",
+        "title":"音声テスト"
     }
 }
