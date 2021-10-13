@@ -112,11 +112,16 @@ export default class Check {
     async statFile(filename) {
         try {
             await Filesystem.statFile(filename);
-            return [ filename, null ];
         }
         catch (e) {
-            return [ null, filename ];
+            try {
+                await Filesystem.statFile(filename + '.txt');
+            }
+            catch (e) {
+                return [ null, filename ];
+            }
         }
+        return [ filename, null ];
     };
 
     setTable(table) {
