@@ -192,7 +192,22 @@ export default class Check {
 
                 if (value[1]) {
                     const file = value[1];
-                    if (!this.#ngList.has(file)) {
+                    const ignore = [
+                        'dialog/5.青空',
+                        'dialog/dialog',
+                        'dialog1/dialog1',
+                        '1/h1',
+                        '1/h2',
+                        'bgm/NONE',
+                        'bgm/None',
+                        'bgm/※BGM変更なし',
+                        'character/character0',
+                        'character/character1'
+                    ].reduce((prev, curr) => {
+                        return prev || (file.indexOf(curr) !== -1)
+                    }, false);
+
+                    if (!ignore && !this.#ngList.has(file)) {
                         this.#ngList.add(file);
 
                         if (file.startsWith(this.config.data.audio.voice)) {
@@ -215,7 +230,11 @@ export default class Check {
             }
         
             if (this.#progress == this.#nItems) {
-                this.#files = Array.from(this.#ngList);
+                this.#files = Array.from(this.#ngList).sort();
+                this.#voices = this.#voices.sort();
+                this.#characters = this.#characters.sort();
+                this.#dialogs = this.#dialogs.sort();
+                this.#bgms = this.#bgms.sort();
             }
 
             this.#adelite.update();

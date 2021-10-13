@@ -55,7 +55,7 @@ const template = {
             }
         },
         "label": {
-            "bind:textContent": "{{ completedCharacters }} / {{ loadedCharacters }}キャラ"
+            "bind:textContent": "{{ incompleteCharacters }} / {{ completedCharacters }}({{ loadedCharacters }}) キャラ"
         }
     },
     "div.character-texture-setting p-q2": {
@@ -496,6 +496,7 @@ function countTasks(character) {
  *     currentFace: string,
  *     isBodyRectFixed: boolean,
  *     completedCharacters: number,
+ *     incompleteCharacters: number,
  *     loadedCharacters: number,
  *     mediaSourceId: number,
  *     makeCharacterName: function(CharacterJson): string,
@@ -578,6 +579,7 @@ function createData(characterEditor) {
 
         isBodyRectFixed: false,
         completedCharacters: 0,
+        incompleteCharacters: 0,
         loadedCharacters: 0,
         mediaSourceId: null,
 
@@ -997,12 +999,16 @@ export default class CharacterEditor {
         }).then((jsons) => {
             this.#data.characters = [];
             this.#data.completedCharacters = 0;
+            this.#data.incompleteCharacters = 0;
             const characters = mergeObject(jsons);
             for (const key of Object.keys(characters)) {
                 this.#data.characters.push(characters[key]);
                 const tasks = countTasks(characters[key]);
                 if (tasks.body + tasks.face <= 3) {
                     ++this.#data.completedCharacters;
+                }
+                else {
+                    ++this.#data.incompleteCharacters;
                 }
                 if ('sprite_rect' in characters[key]) {
                     ++this.#data.loadedCharacters;
