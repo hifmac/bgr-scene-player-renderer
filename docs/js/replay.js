@@ -187,18 +187,23 @@ class Replay {
             return new Promise((resolve, reject) => {
                 /** @type {function(Dialog): void} */
                 const receiveDialog = (dialog) => {
-                    dialogs[dialog.id] = dialog;
-                    if (!('next' in dialog) || dialog.next.length === 0) {
-                        resolve(dialogs);
+                    if (dialog && 'id' in dialog) {
+                        dialogs[dialog.id] = dialog;
                     }
-                    else {
-                        for (const next of dialog.next) {
-                            if (!(next in dialogs)) {
-                                dialogs[next] = null;
-                                IPC.requestDialog(next)
-                                    .then(receiveDialog)
-                                    .catch(reject);
-                            }
+
+                    if (!dialog
+                        || !('next' in dialog)
+                        || dialog.next.length === 0) {
+                        resolve(dialogs);
+                        return ;
+                    }
+
+                    for (const next of dialog.next) {
+                        if (!(next in dialogs)) {
+                            dialogs[next] = null;
+                            IPC.requestDialog(next)
+                                .then(receiveDialog)
+                                .catch(reject);
                         }
                     }
                 };
@@ -587,7 +592,6 @@ class Replay {
                 bodyRect.w,
                 bodyRect.h,
             ];
-            console.log(dest.x, bodyRect.w, ret.body[4]);
 
             ret.face = [
                 faceRect.sx,
