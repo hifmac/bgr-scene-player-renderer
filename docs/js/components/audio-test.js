@@ -26,10 +26,11 @@ const template = {
                 "once:textContent": "{{ characterId }}",
             },
             "div.audio_test_voice_list": {
-                "button.audio_test_voice_button": {
+                "button": {
                     "forEach:voiceName": "{{ Object.keys(directory[characterId]['voice']) }}",
                     "if": "{{ directory[characterId]['voice'][voiceName] }}",
                     "on:click": "{{ playVoice(directory[characterId]['voice'][voiceName]) }}",
+                    "bind:class": "{{ filestat(characterId, voiceName) }}",
                     "once:textContent": "{{ voiceName }}",
                 }
             },
@@ -56,6 +57,15 @@ export default class AudioTest {
             directory,
             characters: Object.keys(directory),
             player: new ClairePlayer(config),
+            filestatResult: {},
+            filestat(characterId, voiceName) {
+                if (characterId in this.filestatResult) {
+                    if (this.filestatResult[characterId][voiceName]) {
+                        return 'audio_test_voice_button';
+                    }
+                }
+                return 'audio_test_voice_button audio_test_voice_button_ng';
+            },
             playVoice(filename) {
                 console.log(filename);
                 this.player.play('voice-test', filename, false);
@@ -67,7 +77,26 @@ export default class AudioTest {
         IPC.requestDirectory().then((directory) => {
             this.#data = this.data(directory, this.#config);
             this.#adelite.show(this.#data);
-            onTimeout(0).then(() => { this.convertFileName(); });
+
+            const promises = [];
+            for (const characterId in directory) { 
+                for (const voiceName in directory[characterId]['voice']) {
+                    const voiceFile = directory[characterId]['voice'][voiceName];
+                    if (voiceFile) {
+                        const filepath = `${this.#config.data.audio.voice}/${voiceFile}`;
+                        promises.push(Filesystem.statFile(filepath).then(() => {
+                            if (!(characterId in this.#data.filestatResult)) {
+                                this.#data.filestatResult[characterId] = {};    
+                            }
+                            this.#data.filestatResult[characterId][voiceName] = true;
+                        }).catch(printStack));
+                    }
+                }
+            }
+            Promise.all(promises).then(() => {
+                this.#adelite.update();
+            });
+            //onTimeout(0).then(() => { this.convertFileName(); });
         });
     }
 
@@ -76,7 +105,7 @@ export default class AudioTest {
     }
 
     convertFileName() {
-        /*for (const characterId of Object.keys(this.#data.directory)) {
+        for (const characterId of Object.keys(this.#data.directory)) {
             const voiceDir = `${this.#config.data.audio.voice}/${characterId}`;
             const voiceList = this.#data.directory[characterId].voice;
             Filesystem.readDirectory(voiceDir).then((filenames) => {
@@ -89,10 +118,14 @@ export default class AudioTest {
                     const srcdir = `${voiceDir}/結婚後入り`;
                     Filesystem.readDirectory(srcdir).then((filenames) => {
                         const filenameQueue2 = Array.from(filenames).sort();
-                        Filesystem.mkdir(`${voiceDir}/backup`);
+
+                        /** @type {Promise<any>} */
+                        let promise = Filesystem.mkdir(`${voiceDir}/backup`);
                         for (const filename of filenameQueue) { 
                             if (filename.startsWith('audio_')) {
-                                Filesystem.rename(`${voiceDir}/${filename}`, `${voiceDir}/backup/${filename}`);
+                                promise = promise.then(() => {
+                                    return Filesystem.rename(`${voiceDir}/${filename}`, `${voiceDir}/backup/${filename}`);
+                                });
                             }
                             else {
                                 console.warn(`${filename} is ignored.`);
@@ -103,7 +136,10 @@ export default class AudioTest {
                             const voiceFile = voiceList[voiceName];
                             if (voiceFile) {
                                 if (filenameQueue2.length && filenameQueue2[0].startsWith('audio_')) {
-                                    Filesystem.copy(`${srcdir}/${filenameQueue2.shift()}`, `${this.#config.data.audio.voice}/${voiceFile}`);
+                                    const srcfile = filenameQueue2.shift();
+                                    promise = promise.then(() => {
+                                        Filesystem.copy(`${srcdir}/${srcfile}`, `${this.#config.data.audio.voice}/${voiceFile}`);
+                                    });
                                 }
                                 else {
                                     console.warn(`no target for ${voiceFile}`);
@@ -114,12 +150,25 @@ export default class AudioTest {
                     return ;
                 }
 
-    
+                while (filenameQueue.length && !filenameQueue[0].startsWith('audio_')) {
+                    filenameQueue.shift();
+                }
+
+                /** @type {Promise<any>} */
+                let promise = null;
                 for (const voiceName of Object.keys(voiceList)) {
                     const voiceFile = voiceList[voiceName];
                     if (voiceFile) {
                         if (filenameQueue.length && filenameQueue[0].startsWith('audio_')) {
-                            Filesystem.rename(`${voiceDir}/${filenameQueue.shift()}`, `${this.#config.data.audio.voice}/${voiceFile}`);
+                            const srcfile = filenameQueue.shift();
+                            if (promise === null) {
+                                promise = Filesystem.rename(`${voiceDir}/${srcfile}`, `${this.#config.data.audio.voice}/${voiceFile}`);
+                            }
+                            else {
+                                promise = promise.then(() => {
+                                    return Filesystem.rename(`${voiceDir}/${srcfile}`, `${this.#config.data.audio.voice}/${voiceFile}`);
+                                });
+                            }
                         }
                         else {
                             console.warn(`no target for ${voiceFile}`);
@@ -127,7 +176,7 @@ export default class AudioTest {
                     }
                 }
             });
-        }*/
+        }
     }
 
     /** @type {Adelite} */

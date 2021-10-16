@@ -259,3 +259,7 @@
     height: 30px;
     width: 100px;
 }
+
+.audio_test_voice_button_ng {
+    background-color: #ff2020;
+}
