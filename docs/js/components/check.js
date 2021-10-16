@@ -192,20 +192,25 @@ export default class Check {
 
                 if (value[1]) {
                     const file = value[1];
-                    const ignore = [
+                    let ignore = [
                         'dialog/5.青空',
                         'dialog/dialog',
                         'dialog1/dialog1',
                         '1/h1',
                         '1/h2',
-                        'bgm/NONE',
                         'bgm/None',
                         'bgm/※BGM変更なし',
                         'character/character0',
-                        'character/character1'
+                        'character/character1',
+                        'base-20001/5'
                     ].reduce((prev, curr) => {
-                        return prev || (file.indexOf(curr) !== -1)
+                        return prev || file.endsWith(curr)
                     }, false);
+
+
+                    ignore = ignore || (file === 'data/audio/bgm/　');
+                    ignore = ignore || (file === 'data/audio/bgm/');
+                    ignore = ignore || (file.indexOf('bgm/NONE') !== -1);
 
                     if (!ignore && !this.#ngList.has(file)) {
                         this.#ngList.add(file);
