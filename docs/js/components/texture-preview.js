@@ -13,7 +13,16 @@ import Adelite from '../sandica/adelite.js';
 
 const template = {
     "div#select": {
-        "select": {
+        "select#1": {
+            "bind:selectedIndex": "{{ selectedFolder }}",
+            "on:change": "{{ onFolderChanged(getAttribute('selectedIndex')) }}",
+            "option": {
+                "forEach:option": "{{ folders }}",
+                "bind:textContent": "{{ option }}",
+                "bind:value": "{{ option }}"
+            }
+        },
+        "select#2": {
             "bind:selectedIndex": "{{ selectedIndex }}",
             "on:change": "{{ onTextureChanged(getAttribute('selectedIndex')) }}",
             "option": {
@@ -49,12 +58,26 @@ export default class TexturePreview {
 
     show() {
         const data = {
+            selectedFolder: 0,
             selectedIndex: 0,
+            folders: [ 'dialog' ],
             textures: [],
             src: null,
 
             /**
-             * 
+             * @param {number} selectedFolder 
+             */
+            onFolderChanged: (selectedFolder) => {
+                data.selectedFolder = selectedFolder;
+
+                this.#path = `${this.#config.data.texture.dialog}/${data.folders[data.selectedFolder]}/`;
+                Filesystem.readDirectory(this.#path).then((files) => {
+                    this.#data.textures = files;
+                    this.#data.onTextureChanged(0);        
+                }).catch(printStack);
+            },
+
+            /**
              * @param {number} selectedIndex 
              */
             onTextureChanged: (selectedIndex) => {
@@ -97,12 +120,10 @@ export default class TexturePreview {
 
         this.#data = data;
         this.#adelite.show(this.#data).then(() => {
-            if (this.#data.textures.length === 0) {
-                Filesystem.readDirectory(this.#path).then((files) => {
-                    this.#data.textures = files;
-                    this.#data.onTextureChanged(0);        
-                }).catch(printStack);
-            }
+            Filesystem.readDirectory(this.#config.data.texture.dialog).then((folders) => {
+                this.#data.folders = folders;
+                this.#data.onFolderChanged(folders.indexOf('dialog'));        
+            }).catch(printStack);
         }).catch(printStack);
     };
 
@@ -118,9 +139,12 @@ export default class TexturePreview {
 
     /**
      * @type {{
+     *     folders: string[],
      *     textures: string[],
+     *     selectedFolder: number,
      *     selectedIndex: number,
      *     src: string,
+     *     onFolderChanged: (number) => void,
      *     onTextureChanged: (number) => void,
      *     onWheelEvent: (WheelEvent) => void,
      *     onDoubleClick: () => void,
