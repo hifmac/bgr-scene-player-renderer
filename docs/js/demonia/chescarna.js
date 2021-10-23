@@ -235,11 +235,11 @@ export class View {
                 if (cache.iterator === iterator && cache.iterator.length === cache.conditions.length) {
                     for (const i in cache.conditions) { 
                         if (cache.conditions[i] !== this.#condition(cache.contexts[i])) {
-                            cache.conditions = Array(cache.contexts, (ctx) => this.#condition(ctx));
+                            cache.conditions = Array.from(cache.contexts, (ctx) => this.#condition(ctx));
                             cache.components = [];
-                            for (const i in cache.contexts) { 
-                                if (cache.conditions[i]) { 
-                                    cache.components.push(this.createComponent(cache.contexts[i], createComponent));
+                            for (const j in cache.contexts) { 
+                                if (cache.conditions[j]) { 
+                                    cache.components.push(this.createComponent(cache.contexts[j], createComponent));
                                 }
                             }        
                             break;

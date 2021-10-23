@@ -202,6 +202,8 @@ export default class Check {
                         'bgm/※BGM変更なし',
                         'character/character0',
                         'character/character1',
+                        'character/character13132',
+                        'character/character9586',
                         'base-20001/5'
                     ].reduce((prev, curr) => {
                         return prev || file.endsWith(curr)

@@ -16,9 +16,18 @@ import * as Nina from '../valmir/nina.js';
 import Adelite from '../sandica/adelite.js';
 
 const template = {
+    "div.mb-q2": {
+        "label.page_filter_label": { "once:textContent": "フィルタ：" },
+        "input.text-content": {
+            "once:type": "text",
+            "once:placeholder": "{{ 'タイトル' }}",
+            "on:change": "{{ onFilterChanged(getAttribute('value')) }}"
+        }
+    },
     "div.page_list_row": {
         "forEach:row": "{{ rows }}",
         "bind:id": "{{ row.id }}",
+        "if": "{{ isFiltered(row.title) }}",
         "on:click": "{{ onRowClicked(row) }}",
         "img": {
             "if": "{{ row.hasIcon }}",
@@ -95,7 +104,30 @@ export default class Scenario {
         }
     }
 
+    /**
+     * set filtering string
+     * @param {string} filteringString 
+     */
+    onFilterChanged(filteringString) {
+        console.log(this.#filteringTitle, filteringString);
+        this.#filteringTitle = filteringString;
+        this.#adelite.update();
+    }
+
+    /**
+     * returns whether row title is filtered or not
+     * @param {string} title 
+     */
+    isFiltered(title) {
+        console.log(title, this.#filteringTitle, 
+            title.indexOf(this.#filteringTitle) !== -1)
+        return (this.#filteringTitle === null
+            || this.#filteringTitle.length === 0
+            || title.indexOf(this.#filteringTitle) !== -1)
+    }
+
     drawPage(page) {
+        this.#filteringTitle = null;
         return new Promise((resolve, reject) => {
             this.#rows = [];
             this.#adelite.update();
@@ -187,4 +219,7 @@ export default class Scenario {
 
     /** @type {(function(string): void)[]} */
     #listeners = null;
+
+    /** @type {string} */
+    #filteringTitle = null;
 }
