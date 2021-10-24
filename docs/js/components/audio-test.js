@@ -96,87 +96,11 @@ export default class AudioTest {
             Promise.all(promises).then(() => {
                 this.#adelite.update();
             });
-            //onTimeout(0).then(() => { this.convertFileName(); });
         });
     }
 
     destroy() {
         this.#adelite.destroy();
-    }
-
-    convertFileName() {
-        for (const characterId of Object.keys(this.#data.directory)) {
-            const voiceDir = `${this.#config.data.audio.voice}/${characterId}`;
-            const voiceList = this.#data.directory[characterId].voice;
-            Filesystem.readDirectory(voiceDir).then((filenames) => {
-                const filenameQueue = Array.from(filenames).sort().filter((x) => {
-                    return x !== 'h01'
-                        && x !== 'h02';
-                });
-
-                if (filenameQueue.indexOf('結婚後入り') !== -1) {
-                    const srcdir = `${voiceDir}/結婚後入り`;
-                    Filesystem.readDirectory(srcdir).then((filenames) => {
-                        const filenameQueue2 = Array.from(filenames).sort();
-
-                        /** @type {Promise<any>} */
-                        let promise = Filesystem.mkdir(`${voiceDir}/backup`);
-                        for (const filename of filenameQueue) { 
-                            if (filename.startsWith('audio_')) {
-                                promise = promise.then(() => {
-                                    return Filesystem.rename(`${voiceDir}/${filename}`, `${voiceDir}/backup/${filename}`);
-                                });
-                            }
-                            else {
-                                console.warn(`${filename} is ignored.`);
-                            }
-                        }
-
-                        for (const voiceName of Object.keys(voiceList)) {
-                            const voiceFile = voiceList[voiceName];
-                            if (voiceFile) {
-                                if (filenameQueue2.length && filenameQueue2[0].startsWith('audio_')) {
-                                    const srcfile = filenameQueue2.shift();
-                                    promise = promise.then(() => {
-                                        Filesystem.copy(`${srcdir}/${srcfile}`, `${this.#config.data.audio.voice}/${voiceFile}`);
-                                    });
-                                }
-                                else {
-                                    console.warn(`no target for ${voiceFile}`);
-                                }
-                            }
-                        }
-                    });
-                    return ;
-                }
-
-                while (filenameQueue.length && !filenameQueue[0].startsWith('audio_')) {
-                    filenameQueue.shift();
-                }
-
-                /** @type {Promise<any>} */
-                let promise = null;
-                for (const voiceName of Object.keys(voiceList)) {
-                    const voiceFile = voiceList[voiceName];
-                    if (voiceFile) {
-                        if (filenameQueue.length && filenameQueue[0].startsWith('audio_')) {
-                            const srcfile = filenameQueue.shift();
-                            if (promise === null) {
-                                promise = Filesystem.rename(`${voiceDir}/${srcfile}`, `${this.#config.data.audio.voice}/${voiceFile}`);
-                            }
-                            else {
-                                promise = promise.then(() => {
-                                    return Filesystem.rename(`${voiceDir}/${srcfile}`, `${this.#config.data.audio.voice}/${voiceFile}`);
-                                });
-                            }
-                        }
-                        else {
-                            console.warn(`no target for ${voiceFile}`);
-                        }
-                    }
-                }
-            });
-        }
     }
 
     /** @type {Adelite} */
