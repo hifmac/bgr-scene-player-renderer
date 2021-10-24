@@ -7,7 +7,7 @@
             "scene_test",
             "widget_designer",
             "audio_test",
-            "resourece_decryptor"
+            "resource_decryptor"
         ],
         "id":"debug",
         "title":"デバッグ"
@@ -27,9 +27,9 @@
         "id":"audio",
         "title":"音声テスト"
     },
-    "resourece_decryptor":{
+    "resource_decryptor":{
         "html": "resource-decryptor.html",
-        "id":"resourece_decryptor",
+        "id":"resource_decryptor",
         "title":"復号ツール"
     }
 }
